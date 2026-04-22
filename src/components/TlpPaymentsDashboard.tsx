@@ -1,5 +1,6 @@
 import { RefreshCw } from "lucide-react";
 
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Card,
   CardContent,
@@ -196,7 +197,7 @@ const statusMeta: Record<AgentStatus, { label: string; tone: keyof typeof toneCl
 const SummaryMetric = ({ label, value, emphasize = false, tone = "default" }: { label: string; value: number; emphasize?: boolean; tone?: "default" | "danger"; }) => (
   <div className="space-y-2 rounded-md border border-border bg-panel-alt p-5">
     <p className="text-sm font-medium text-muted-foreground">{label}</p>
-    <p className={emphasize ? `text-3xl font-semibold ${tone === "danger" ? "text-status-danger" : "text-foreground"}` : "text-3xl font-semibold text-foreground"}>
+    <p className={emphasize ? `text-4xl font-semibold ${tone === "danger" ? "text-status-danger" : "text-foreground"}` : "text-4xl font-semibold text-foreground"}>
       {formatCurrency(value)}
     </p>
   </div>
@@ -240,8 +241,26 @@ const TlpPaymentsDashboard = () => {
           </div>
         </section>
 
-        {hasIssues && (
-          <section aria-labelledby="issues-heading">
+        <Tabs defaultValue="issues" className="space-y-6 pb-4">
+          <TabsList className="h-auto w-full justify-start gap-2 rounded-lg border border-border bg-panel p-2">
+            <TabsTrigger value="issues" className="gap-2 rounded-md px-4 py-2">
+              <span>Issues</span>
+              {hasIssues && (
+                <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${toneClasses[overallStatus.tone === "success" ? "warning" : overallStatus.tone].pill}`}>
+                  <span className={`h-2 w-2 rounded-full ${toneClasses[overallStatus.tone === "success" ? "warning" : overallStatus.tone].dot}`} />
+                  {issueCounts.issues}
+                </span>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="tlp-account-payments" className="rounded-md px-4 py-2">
+              TLP Account Payments
+            </TabsTrigger>
+            <TabsTrigger value="manual-bank-payments" className="rounded-md px-4 py-2">
+              Manual Bank Payments
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="issues" className="mt-0">
             <Card className="border-border bg-panel shadow-sm">
               <CardHeader className="border-b border-border">
                 <CardTitle id="issues-heading" className="text-xl text-foreground">
@@ -249,109 +268,122 @@ const TlpPaymentsDashboard = () => {
                 </CardTitle>
                 <CardDescription>Items are prioritised by severity to support payment run review.</CardDescription>
               </CardHeader>
-              <CardContent className="grid gap-4 p-6">
-                {sortedFlags.map((flag) => {
-                  const tone = toneClasses[flag.severity];
-                  return (
-                    <article key={`${flag.agent}-${flag.type}`} className="rounded-lg border border-border bg-panel-alt p-4">
-                      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-3">
-                            <h3 className="text-base font-semibold text-foreground">{flag.agent}</h3>
-                            <span className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+              <CardContent className="p-0">
+                {hasIssues ? (
+                  <ul className="divide-y divide-border">
+                    {sortedFlags.map((flag) => {
+                      const tone = toneClasses[flag.severity];
+
+                      return (
+                        <li key={`${flag.agent}-${flag.type}`} className="flex flex-col gap-3 px-6 py-4 xl:flex-row xl:items-center xl:justify-between">
+                          <div className="flex min-w-0 flex-wrap items-center gap-3">
+                            <span className="text-sm font-semibold text-foreground">{flag.agent}</span>
+                            <span className="inline-flex items-center rounded-full border border-border bg-panel-alt px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
                               {flag.platform}
                             </span>
+                            <span className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold ${tone.pill}`}>
+                              {flag.severity === "danger" ? "🔴" : "🟠"} {flag.type}
+                            </span>
                           </div>
-                          <div className={`inline-flex items-center rounded-full border px-3 py-1 text-sm font-semibold ${tone.pill}`}>
-                            {flag.severity === "danger" ? "🔴" : "🟠"} {flag.type}
-                          </div>
-                        </div>
-                        <p className="max-w-3xl text-sm text-muted-foreground lg:text-right">{flag.detail}</p>
-                      </div>
-                    </article>
-                  );
-                })}
+                          <p className="text-sm text-muted-foreground xl:text-right">{flag.detail}</p>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                ) : (
+                  <div className="px-6 py-8 text-sm text-muted-foreground">No issues currently require attention.</div>
+                )}
               </CardContent>
             </Card>
-          </section>
-        )}
+          </TabsContent>
 
-        <section aria-labelledby="batch-payments-heading">
-          <Card className="border-border bg-panel shadow-sm">
-            <CardHeader className="border-b border-border">
-              <CardTitle id="batch-payments-heading" className="text-xl text-foreground">
-                Batch Payments
-              </CardTitle>
-              <CardDescription>Combined totals across all batch payment agents.</CardDescription>
-            </CardHeader>
-            <CardContent className="grid gap-4 p-6 md:grid-cols-2 xl:grid-cols-4">
-              <SummaryMetric label="Holding Account Transfer (£)" value={batchSummary.holdingTransfer} emphasize />
-              <SummaryMetric label="CBO Total (£)" value={batchSummary.cboTotal} emphasize />
-              <SummaryMetric label="CBO Manual Payments (£)" value={batchSummary.cboManualPayments} emphasize />
-              <SummaryMetric
-                label="Reconciliation Difference (£)"
-                value={batchSummary.reconciliationDifference}
-                emphasize
-                tone={batchSummary.reconciliationDifference !== 0 ? "danger" : "default"}
-              />
-            </CardContent>
-          </Card>
-        </section>
+          <TabsContent value="tlp-account-payments" className="mt-0">
+            <Card className="border-border bg-panel shadow-sm">
+              <CardHeader className="border-b border-border">
+                <CardTitle id="batch-payments-heading" className="text-xl text-foreground">
+                  Batch Payments
+                </CardTitle>
+                <CardDescription>Combined totals across all batch payment agents.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6 p-6">
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                  <SummaryMetric label="Holding Account Transfer (£)" value={batchSummary.holdingTransfer} emphasize />
+                  <SummaryMetric label="CBO Total (£)" value={batchSummary.cboTotal} emphasize />
+                  <SummaryMetric label="CBO Manual Payments (£)" value={batchSummary.cboManualPayments} emphasize />
+                  <SummaryMetric
+                    label="Reconciliation Difference (£)"
+                    value={batchSummary.reconciliationDifference}
+                    emphasize
+                    tone={batchSummary.reconciliationDifference !== 0 ? "danger" : "default"}
+                  />
+                </div>
 
-        <section aria-labelledby="third-party-heading" className="pb-4">
-          <div className="mb-4 flex items-end justify-between">
-            <div>
-              <h2 id="third-party-heading" className="text-xl font-semibold text-foreground">
-                Third Party Accounts
-              </h2>
-              <p className="mt-1 text-sm text-muted-foreground">Issue cards are surfaced first for operational review.</p>
-            </div>
-          </div>
+                <div className="border-t border-border pt-5">
+                  <div className="mb-3 text-sm font-medium text-muted-foreground">Contributing batch agents</div>
+                  <ul className="space-y-2 pl-4">
+                    {batchAgents.map((agent) => (
+                      <li key={agent.agent} className="flex items-center justify-between gap-4 text-sm">
+                        <span className="font-medium text-foreground">{agent.agent}</span>
+                        <span className="tabular-nums text-muted-foreground">{formatCurrency(agent.holdingTransfer)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-          <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
-            {sortedAgents.map((agent) => {
-              const meta = statusMeta[agent.status];
-              const tone = toneClasses[meta.tone];
-              const hasReconDifference = agent.reconciliationDifference !== 0;
+          <TabsContent value="manual-bank-payments" className="mt-0">
+            <Card className="border-border bg-panel shadow-sm">
+              <CardHeader className="border-b border-border">
+                <CardTitle id="third-party-heading" className="text-xl text-foreground">
+                  Third Party Accounts
+                </CardTitle>
+                <CardDescription>Issue and warning rows are surfaced first for operational review.</CardDescription>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="overflow-x-auto">
+                  <div className="min-w-[1100px]">
+                    <div className="grid grid-cols-[120px_minmax(220px,1.4fr)_120px_repeat(4,minmax(150px,1fr))] border-b border-border bg-panel px-6 py-3 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                      <span>Status</span>
+                      <span>Agent</span>
+                      <span>Platform</span>
+                      <span>Holding Account Transfer</span>
+                      <span>CBO Total</span>
+                      <span>CBO Manual Payments</span>
+                      <span>Reconciliation Difference</span>
+                    </div>
 
-              return (
-                <Card key={agent.agent} className="border-border bg-panel shadow-sm hover:shadow-md">
-                  <CardHeader className="flex-row items-start justify-between space-y-0 border-b border-border">
-                    <div className="space-y-1">
-                      <CardTitle className="text-lg text-foreground">{agent.agent}</CardTitle>
-                      <CardDescription className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
-                        {agent.platform}
-                      </CardDescription>
-                    </div>
-                    <span className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold ${tone.pill}`}>
-                      {meta.label}
-                    </span>
-                  </CardHeader>
-                  <CardContent className="grid gap-4 p-6 sm:grid-cols-2">
-                    <div className="space-y-1">
-                      <p className="text-sm text-muted-foreground">Holding Account Transfer (£)</p>
-                      <p className="text-2xl font-semibold text-foreground">{formatCurrency(agent.holdingTransfer)}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-sm text-muted-foreground">CBO Total (£)</p>
-                      <p className="text-2xl font-semibold text-foreground">{formatCurrency(agent.cboTotal)}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-sm text-muted-foreground">CBO Manual Payments (£)</p>
-                      <p className="text-2xl font-semibold text-foreground">{formatCurrency(agent.cboManualPayments)}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-sm text-muted-foreground">Reconciliation Difference (£)</p>
-                      <p className={`text-2xl font-semibold ${hasReconDifference ? "text-status-danger" : "text-status-success"}`}>
-                        {formatCurrency(agent.reconciliationDifference)}
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        </section>
+                    {sortedAgents.map((agent, index) => {
+                      const meta = statusMeta[agent.status];
+                      const tone = toneClasses[meta.tone];
+                      const hasReconDifference = agent.reconciliationDifference !== 0;
+
+                      return (
+                        <div
+                          key={agent.agent}
+                          className={`grid grid-cols-[120px_minmax(220px,1.4fr)_120px_repeat(4,minmax(150px,1fr))] items-center border-b border-border px-6 py-4 text-sm ${index % 2 === 0 ? "bg-panel" : "bg-panel-alt/60"}`}
+                        >
+                          <span className={`inline-flex w-fit items-center rounded-full border px-3 py-1 text-xs font-semibold ${tone.pill}`}>
+                            {meta.label}
+                          </span>
+                          <span className="font-semibold text-foreground">{agent.agent}</span>
+                          <span className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">{agent.platform}</span>
+                          <span className="tabular-nums text-foreground">{formatCurrency(agent.holdingTransfer)}</span>
+                          <span className="tabular-nums text-foreground">{formatCurrency(agent.cboTotal)}</span>
+                          <span className="tabular-nums text-foreground">{formatCurrency(agent.cboManualPayments)}</span>
+                          <span className={`tabular-nums font-semibold ${hasReconDifference ? "text-status-danger" : "text-status-success"}`}>
+                            {formatCurrency(agent.reconciliationDifference)}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
     </main>
   );
