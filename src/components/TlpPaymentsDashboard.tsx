@@ -45,6 +45,11 @@ type SoftwareGroup = {
   paymentFileTotal: number;
   cboTotal: number;
   cboManualPayments: number;
+  issueSources?: Array<{
+    agent: string;
+    file: string;
+    detail: string;
+  }>;
 };
 
 type HoldingTransferAgent = {
@@ -107,12 +112,32 @@ const thirdPartyAgents: ThirdPartyAgent[] = [
 const softwareGroups: SoftwareGroup[] = [
   { software: "10Ninety", balancingSheetTotal: 18240, paymentFileTotal: 18240, cboTotal: 17650, cboManualPayments: 590 },
   { software: "Jupix", balancingSheetTotal: 21485, paymentFileTotal: 21485, cboTotal: 20735, cboManualPayments: 750 },
-  { software: "Alto", balancingSheetTotal: 19860, paymentFileTotal: 19610, cboTotal: 19010, cboManualPayments: 850 },
+  {
+    software: "Alto",
+    balancingSheetTotal: 19860,
+    paymentFileTotal: 19610,
+    cboTotal: 19010,
+    cboManualPayments: 850,
+    issueSources: [
+      { agent: "Kingsley Finance", file: "alto_payments_2026-04-22.csv", detail: "Payment file omitted one outbound payment line worth £250.00." },
+      { agent: "Cedar Residential", file: "alto_balancing_2026-04-22.xlsx", detail: "Balancing sheet includes a manual adjustment not present in the payment file." },
+    ],
+  },
   { software: "Street", balancingSheetTotal: 23620, paymentFileTotal: 23620, cboTotal: 22940, cboManualPayments: 680 },
   { software: "Acquaint", balancingSheetTotal: 17275, paymentFileTotal: 17275, cboTotal: 16625, cboManualPayments: 650 },
   { software: "Genie", balancingSheetTotal: 15430, paymentFileTotal: 15430, cboTotal: 14910, cboManualPayments: 520 },
   { software: "Veco", balancingSheetTotal: 14380, paymentFileTotal: 14380, cboTotal: 13920, cboManualPayments: 460 },
-  { software: "SME", balancingSheetTotal: 16790, paymentFileTotal: 17040, cboTotal: 16140, cboManualPayments: 650 },
+  {
+    software: "SME",
+    balancingSheetTotal: 16790,
+    paymentFileTotal: 17040,
+    cboTotal: 16140,
+    cboManualPayments: 650,
+    issueSources: [
+      { agent: "Northpoint Estates", file: "sme_recon_2026-04-22.csv", detail: "Reconciliation export contains an extra £250.00 entry pending investigation." },
+      { agent: "Harbour & Co", file: "sme_payment_file_2026-04-22.csv", detail: "Payment file total exceeds balancing sheet by £250.00." },
+    ],
+  },
   { software: "Reapit", balancingSheetTotal: 24810, paymentFileTotal: 24810, cboTotal: 23990, cboManualPayments: 820 },
 ];
 
@@ -226,6 +251,7 @@ const TlpPaymentsDashboard = () => {
   const hasIssues = sortedFlags.length > 0;
   const defaultSelectedSoftware = softwareGroups.map((group) => group.software);
   const [selectedSoftware, setSelectedSoftware] = useState<string[]>(defaultSelectedSoftware);
+  const [expandedSoftwareIssues, setExpandedSoftwareIssues] = useState<string[]>([]);
 
   const selectedGroups = useMemo(() => {
     const filtered = softwareGroups.filter((group) => selectedSoftware.includes(group.software));
@@ -262,6 +288,12 @@ const TlpPaymentsDashboard = () => {
           softwareGroups.findIndex((group) => group.software === b),
       );
     });
+  };
+
+  const toggleSoftwareIssues = (software: string) => {
+    setExpandedSoftwareIssues((current) =>
+      current.includes(software) ? current.filter((value) => value !== software) : [...current, software],
+    );
   };
 
   return (
@@ -410,24 +442,48 @@ const TlpPaymentsDashboard = () => {
                   {selectedGroups.map((group) => {
                     const difference = group.paymentFileTotal - group.balancingSheetTotal;
                     const matches = difference === 0;
+                    const isExpanded = expandedSoftwareIssues.includes(group.software);
 
                     return (
-                      <div
-                        key={group.software}
-                        className="grid gap-3 px-4 py-4 lg:grid-cols-[minmax(180px,1.2fr)_minmax(180px,1fr)_minmax(180px,1fr)_minmax(180px,1fr)] lg:items-center"
-                      >
-                        <span className="font-semibold text-foreground">{group.software}</span>
-                        <span className="text-sm text-foreground">
-                          <span className="mr-2 text-muted-foreground">Balancing Sheet:</span>
-                          <span className="tabular-nums">{formatCurrency(group.balancingSheetTotal)}</span>
-                        </span>
-                        <span className="text-sm text-foreground">
-                          <span className="mr-2 text-muted-foreground">Payment File:</span>
-                          <span className="tabular-nums">{formatCurrency(group.paymentFileTotal)}</span>
-                        </span>
-                        <span className={`text-sm font-semibold ${matches ? "text-status-success" : "text-status-danger"}`}>
-                          {matches ? `✅ Match` : `❌ Difference: ${formatCurrency(difference)}`}
-                        </span>
+                      <div key={group.software}>
+                        <div className="grid gap-3 px-4 py-4 lg:grid-cols-[minmax(180px,1.2fr)_minmax(180px,1fr)_minmax(180px,1fr)_minmax(180px,1fr)] lg:items-center">
+                          <span className="font-semibold text-foreground">{group.software}</span>
+                          <span className="text-sm text-foreground">
+                            <span className="mr-2 text-muted-foreground">Balancing Sheet:</span>
+                            <span className="tabular-nums">{formatCurrency(group.balancingSheetTotal)}</span>
+                          </span>
+                          <span className="text-sm text-foreground">
+                            <span className="mr-2 text-muted-foreground">Payment File:</span>
+                            <span className="tabular-nums">{formatCurrency(group.paymentFileTotal)}</span>
+                          </span>
+                          {matches ? (
+                            <span className="text-sm font-semibold text-status-success">✅ Match</span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => toggleSoftwareIssues(group.software)}
+                              className="w-fit text-left text-sm font-semibold text-status-danger transition-opacity hover:opacity-80"
+                            >
+                              {`❌ Difference: ${formatCurrency(difference)}`}
+                            </button>
+                          )}
+                        </div>
+
+                        {!matches && isExpanded && group.issueSources && (
+                          <div className="border-t border-border bg-panel-alt/60 px-4 py-4 lg:pl-8">
+                            <div className="space-y-3">
+                              {group.issueSources.map((source) => (
+                                <div key={`${group.software}-${source.agent}-${source.file}`} className="grid gap-1 lg:grid-cols-[minmax(220px,1fr)_minmax(280px,1.2fr)] lg:items-start lg:gap-4">
+                                  <div className="space-y-1">
+                                    <p className="text-sm font-semibold text-foreground">{source.agent}</p>
+                                    <p className="text-xs text-muted-foreground">{source.file}</p>
+                                  </div>
+                                  <p className="text-sm text-muted-foreground">{source.detail}</p>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     );
                   })}
