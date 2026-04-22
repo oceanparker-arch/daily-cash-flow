@@ -251,6 +251,7 @@ const TlpPaymentsDashboard = () => {
   const hasIssues = sortedFlags.length > 0;
   const defaultSelectedSoftware = softwareGroups.map((group) => group.software);
   const [selectedSoftware, setSelectedSoftware] = useState<string[]>(defaultSelectedSoftware);
+  const [expandedSoftwareIssues, setExpandedSoftwareIssues] = useState<string[]>([]);
 
   const selectedGroups = useMemo(() => {
     const filtered = softwareGroups.filter((group) => selectedSoftware.includes(group.software));
@@ -287,6 +288,12 @@ const TlpPaymentsDashboard = () => {
           softwareGroups.findIndex((group) => group.software === b),
       );
     });
+  };
+
+  const toggleSoftwareIssues = (software: string) => {
+    setExpandedSoftwareIssues((current) =>
+      current.includes(software) ? current.filter((value) => value !== software) : [...current, software],
+    );
   };
 
   return (
@@ -435,24 +442,48 @@ const TlpPaymentsDashboard = () => {
                   {selectedGroups.map((group) => {
                     const difference = group.paymentFileTotal - group.balancingSheetTotal;
                     const matches = difference === 0;
+                    const isExpanded = expandedSoftwareIssues.includes(group.software);
 
                     return (
-                      <div
-                        key={group.software}
-                        className="grid gap-3 px-4 py-4 lg:grid-cols-[minmax(180px,1.2fr)_minmax(180px,1fr)_minmax(180px,1fr)_minmax(180px,1fr)] lg:items-center"
-                      >
-                        <span className="font-semibold text-foreground">{group.software}</span>
-                        <span className="text-sm text-foreground">
-                          <span className="mr-2 text-muted-foreground">Balancing Sheet:</span>
-                          <span className="tabular-nums">{formatCurrency(group.balancingSheetTotal)}</span>
-                        </span>
-                        <span className="text-sm text-foreground">
-                          <span className="mr-2 text-muted-foreground">Payment File:</span>
-                          <span className="tabular-nums">{formatCurrency(group.paymentFileTotal)}</span>
-                        </span>
-                        <span className={`text-sm font-semibold ${matches ? "text-status-success" : "text-status-danger"}`}>
-                          {matches ? `✅ Match` : `❌ Difference: ${formatCurrency(difference)}`}
-                        </span>
+                      <div key={group.software}>
+                        <div className="grid gap-3 px-4 py-4 lg:grid-cols-[minmax(180px,1.2fr)_minmax(180px,1fr)_minmax(180px,1fr)_minmax(180px,1fr)] lg:items-center">
+                          <span className="font-semibold text-foreground">{group.software}</span>
+                          <span className="text-sm text-foreground">
+                            <span className="mr-2 text-muted-foreground">Balancing Sheet:</span>
+                            <span className="tabular-nums">{formatCurrency(group.balancingSheetTotal)}</span>
+                          </span>
+                          <span className="text-sm text-foreground">
+                            <span className="mr-2 text-muted-foreground">Payment File:</span>
+                            <span className="tabular-nums">{formatCurrency(group.paymentFileTotal)}</span>
+                          </span>
+                          {matches ? (
+                            <span className="text-sm font-semibold text-status-success">✅ Match</span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => toggleSoftwareIssues(group.software)}
+                              className="w-fit text-left text-sm font-semibold text-status-danger transition-opacity hover:opacity-80"
+                            >
+                              {`❌ Difference: ${formatCurrency(difference)}`}
+                            </button>
+                          )}
+                        </div>
+
+                        {!matches && isExpanded && group.issueSources && (
+                          <div className="border-t border-border bg-panel-alt/60 px-4 py-4 lg:pl-8">
+                            <div className="space-y-3">
+                              {group.issueSources.map((source) => (
+                                <div key={`${group.software}-${source.agent}-${source.file}`} className="grid gap-1 lg:grid-cols-[minmax(220px,1fr)_minmax(280px,1.2fr)] lg:items-start lg:gap-4">
+                                  <div className="space-y-1">
+                                    <p className="text-sm font-semibold text-foreground">{source.agent}</p>
+                                    <p className="text-xs text-muted-foreground">{source.file}</p>
+                                  </div>
+                                  <p className="text-sm text-muted-foreground">{source.detail}</p>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     );
                   })}
