@@ -248,15 +248,19 @@ const TlpPaymentsDashboard = () => {
 
   const toggleSoftwareGroup = (software: string, pressed: boolean) => {
     setSelectedSoftware((current) => {
-      if (pressed) {
-        return [...current, software].sort(
-          (a, b) =>
-            softwareGroups.findIndex((group) => group.software === a) -
-            softwareGroups.findIndex((group) => group.software === b),
-        );
+      if (!pressed) {
+        return current.length === 1 && current[0] === software ? current : [software];
       }
 
-      return current.filter((value) => value !== software);
+      if (current.includes(software)) {
+        return current;
+      }
+
+      return [...current, software].sort(
+        (a, b) =>
+          softwareGroups.findIndex((group) => group.software === a) -
+          softwareGroups.findIndex((group) => group.software === b),
+      );
     });
   };
 
