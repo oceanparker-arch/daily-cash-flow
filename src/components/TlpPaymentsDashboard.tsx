@@ -275,7 +275,7 @@ const TlpPaymentsDashboard = () => {
   const toggleSoftwareGroup = (software: string, pressed: boolean) => {
     setSelectedSoftware((current) => {
       if (!pressed) {
-        return current.length === 1 && current[0] === software ? current : [software];
+        return current.length === 1 && current[0] === software ? defaultSelectedSoftware : [software];
       }
 
       if (current.includes(software)) {
