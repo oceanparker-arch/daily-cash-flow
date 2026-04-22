@@ -1,14 +1,9 @@
+import { useMemo, useState } from "react";
 import { RefreshCw } from "lucide-react";
 
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Toggle } from "@/components/ui/toggle";
 
 type IssueSeverity = "danger" | "warning";
 type IssueType =
@@ -42,6 +37,19 @@ type ThirdPartyAgent = {
   cboManualPayments: number;
   reconciliationDifference: number;
   status: AgentStatus;
+};
+
+type SoftwareGroup = {
+  software: string;
+  balancingSheetTotal: number;
+  paymentFileTotal: number;
+  cboTotal: number;
+  cboManualPayments: number;
+};
+
+type HoldingTransferAgent = {
+  agent: string;
+  holdingTransfer: number;
 };
 
 const issueFlags: IssueFlag[] = [
@@ -94,6 +102,26 @@ const thirdPartyAgents: ThirdPartyAgent[] = [
   { agent: "Redbridge Living", platform: "STREET", holdingTransfer: 15890, cboTotal: 15890, cboManualPayments: 0, reconciliationDifference: 0, status: "ok" },
   { agent: "Sterling Homes", platform: "ALTO", holdingTransfer: 13260, cboTotal: 12960, cboManualPayments: 300, reconciliationDifference: 0, status: "ok" },
   { agent: "Westcourt Management", platform: "STREET", holdingTransfer: 18710, cboTotal: 18010, cboManualPayments: 700, reconciliationDifference: 0, status: "ok" },
+];
+
+const softwareGroups: SoftwareGroup[] = [
+  { software: "10Ninety", balancingSheetTotal: 18240, paymentFileTotal: 18240, cboTotal: 17650, cboManualPayments: 590 },
+  { software: "Jupix", balancingSheetTotal: 21485, paymentFileTotal: 21485, cboTotal: 20735, cboManualPayments: 750 },
+  { software: "Alto", balancingSheetTotal: 19860, paymentFileTotal: 19610, cboTotal: 19010, cboManualPayments: 850 },
+  { software: "Street", balancingSheetTotal: 23620, paymentFileTotal: 23620, cboTotal: 22940, cboManualPayments: 680 },
+  { software: "Acquaint", balancingSheetTotal: 17275, paymentFileTotal: 17275, cboTotal: 16625, cboManualPayments: 650 },
+  { software: "Genie", balancingSheetTotal: 15430, paymentFileTotal: 15430, cboTotal: 14910, cboManualPayments: 520 },
+  { software: "Veco", balancingSheetTotal: 14380, paymentFileTotal: 14380, cboTotal: 13920, cboManualPayments: 460 },
+  { software: "SME", balancingSheetTotal: 16790, paymentFileTotal: 17040, cboTotal: 16140, cboManualPayments: 650 },
+  { software: "Reapit", balancingSheetTotal: 24810, paymentFileTotal: 24810, cboTotal: 23990, cboManualPayments: 820 },
+];
+
+const holdingTransferAgents: HoldingTransferAgent[] = [
+  { agent: "Bridgewater Client Funds", holdingTransfer: 18420 },
+  { agent: "Evergreen Deposits", holdingTransfer: 22675 },
+  { agent: "Lansdowne Holdings", holdingTransfer: 17340 },
+  { agent: "Pioneer Trust Accounts", holdingTransfer: 20980 },
+  { agent: "Summit Escrow Services", holdingTransfer: 19465 },
 ];
 
 const severityOrder: Record<IssueSeverity, number> = { danger: 0, warning: 1 };
@@ -163,29 +191,22 @@ const overallStatus = sortedFlags.some((flag) => flag.severity === "danger")
 const toneClasses = {
   success: {
     banner: "border-status-success/20 bg-status-success-surface text-status-success-foreground",
-    pill: "bg-status-success-surface text-status-success-foreground border-status-success/20",
+    pill: "border-status-success/20 bg-status-success-surface text-status-success-foreground",
     dot: "bg-status-success",
     value: "text-status-success",
   },
   warning: {
     banner: "border-status-warning/20 bg-status-warning-surface text-status-warning-foreground",
-    pill: "bg-status-warning-surface text-status-warning-foreground border-status-warning/20",
+    pill: "border-status-warning/20 bg-status-warning-surface text-status-warning-foreground",
     dot: "bg-status-warning",
     value: "text-status-warning",
   },
   danger: {
     banner: "border-status-danger/20 bg-status-danger-surface text-status-danger-foreground",
-    pill: "bg-status-danger-surface text-status-danger-foreground border-status-danger/20",
+    pill: "border-status-danger/20 bg-status-danger-surface text-status-danger-foreground",
     dot: "bg-status-danger",
     value: "text-status-danger",
   },
-};
-
-const issueTypeTone: Record<IssueType, "danger" | "warning"> = {
-  "Missing Payment File": "danger",
-  "Payment File / Balancing Sheet Mismatch": "danger",
-  "Blank Balancing Sheet": "warning",
-  "Reconciliation Difference": "warning",
 };
 
 const statusMeta: Record<AgentStatus, { label: string; tone: keyof typeof toneClasses }> = {
@@ -194,60 +215,96 @@ const statusMeta: Record<AgentStatus, { label: string; tone: keyof typeof toneCl
   ok: { label: "🟢 OK", tone: "success" },
 };
 
-const SummaryMetric = ({ label, value, emphasize = false, tone = "default" }: { label: string; value: number; emphasize?: boolean; tone?: "default" | "danger"; }) => (
-  <div className="space-y-2 rounded-md border border-border bg-panel-alt p-5">
+const SummaryMetric = ({ label, value }: { label: string; value: number }) => (
+  <div className="space-y-2 rounded-md border border-border bg-panel-alt p-6">
     <p className="text-sm font-medium text-muted-foreground">{label}</p>
-    <p className={emphasize ? `text-4xl font-semibold ${tone === "danger" ? "text-status-danger" : "text-foreground"}` : "text-4xl font-semibold text-foreground"}>
-      {formatCurrency(value)}
-    </p>
+    <p className="text-4xl font-semibold text-foreground">{formatCurrency(value)}</p>
   </div>
 );
 
 const TlpPaymentsDashboard = () => {
   const hasIssues = sortedFlags.length > 0;
+  const defaultSelectedSoftware = softwareGroups.map((group) => group.software);
+  const [selectedSoftware, setSelectedSoftware] = useState<string[]>(defaultSelectedSoftware);
+
+  const selectedGroups = useMemo(() => {
+    const filtered = softwareGroups.filter((group) => selectedSoftware.includes(group.software));
+
+    return [...filtered].sort((a, b) => {
+      const aMismatch = a.balancingSheetTotal !== a.paymentFileTotal ? 0 : 1;
+      const bMismatch = b.balancingSheetTotal !== b.paymentFileTotal ? 0 : 1;
+
+      return aMismatch - bMismatch || a.software.localeCompare(b.software);
+    });
+  }, [selectedSoftware]);
+
+  const softwareSummary = selectedGroups.reduce(
+    (totals, group) => ({
+      cboTotal: totals.cboTotal + group.cboTotal,
+      cboManualPayments: totals.cboManualPayments + group.cboManualPayments,
+    }),
+    { cboTotal: 0, cboManualPayments: 0 },
+  );
+
+  const toggleSoftwareGroup = (software: string, pressed: boolean) => {
+    setSelectedSoftware((current) => {
+      if (pressed) {
+        return [...current, software].sort(
+          (a, b) =>
+            softwareGroups.findIndex((group) => group.software === a) -
+            softwareGroups.findIndex((group) => group.software === b),
+        );
+      }
+
+      return current.filter((value) => value !== software);
+    });
+  };
 
   return (
     <main className="min-h-screen bg-app">
       <div className="mx-auto flex w-full max-w-[1680px] flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
-        <header className="sticky top-0 z-10 rounded-lg border border-border bg-header text-header-foreground shadow-sm">
-          <div className="flex flex-col gap-4 px-5 py-4 lg:flex-row lg:items-center lg:justify-between lg:px-6">
-            <div className="space-y-1">
-              <h1 className="text-2xl font-semibold tracking-tight">TLP Daily Payments Dashboard</h1>
-              <div className="flex flex-col gap-1 text-sm text-header-foreground/80 sm:flex-row sm:gap-6">
-                <span>Today: {todayLabel}</span>
-                <span>Last refreshed: {lastRefreshLabel}</span>
+        <div className="sticky top-0 z-20 space-y-4 bg-app pb-2">
+          <header className="rounded-lg border border-border bg-header text-header-foreground shadow-sm">
+            <div className="flex flex-col gap-4 px-5 py-4 lg:flex-row lg:items-center lg:justify-between lg:px-6">
+              <div className="space-y-1">
+                <h1 className="text-2xl font-semibold tracking-tight">TLP Daily Payments Dashboard</h1>
+                <div className="flex flex-col gap-1 text-sm text-header-foreground/80 sm:flex-row sm:gap-6">
+                  <span>Today: {todayLabel}</span>
+                  <span>Last refreshed: {lastRefreshLabel}</span>
+                </div>
+              </div>
+
+              <Button variant="toolbar" className="min-w-32 bg-panel text-foreground hover:-translate-y-0.5">
+                <RefreshCw className="motion-safe:group-hover:animate-spin-slow" />
+                Refresh
+              </Button>
+            </div>
+          </header>
+
+          <section
+            aria-label="Overall run status"
+            className={`rounded-lg border px-5 py-4 shadow-sm ${toneClasses[overallStatus.tone].banner}`}
+          >
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div className="flex items-center gap-3">
+                <span
+                  className={`h-3.5 w-3.5 rounded-full ${toneClasses[overallStatus.tone].dot} ${overallStatus.tone !== "success" ? "motion-safe:animate-soft-pulse" : ""}`}
+                />
+                <div>
+                  <p className="text-lg font-semibold">{overallStatus.label}</p>
+                  <p className="text-sm opacity-90">{overallStatus.summary}</p>
+                </div>
               </div>
             </div>
-
-            <Button variant="toolbar" className="min-w-32 bg-panel text-foreground hover:-translate-y-0.5">
-              <RefreshCw className="motion-safe:group-hover:animate-spin-slow" />
-              Refresh
-            </Button>
-          </div>
-        </header>
-
-        <section
-          aria-label="Overall run status"
-          className={`rounded-lg border px-5 py-4 shadow-sm ${toneClasses[overallStatus.tone].banner}`}
-        >
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex items-center gap-3">
-              <span className={`h-3.5 w-3.5 rounded-full ${toneClasses[overallStatus.tone].dot} ${overallStatus.tone !== "success" ? "motion-safe:animate-soft-pulse" : ""}`} />
-              <div>
-                <p className="text-lg font-semibold">{overallStatus.label}</p>
-                <p className="text-sm opacity-90">{overallStatus.summary}</p>
-              </div>
-            </div>
-          </div>
-        </section>
+          </section>
+        </div>
 
         <Tabs defaultValue="issues" className="space-y-6 pb-4">
           <TabsList className="h-auto w-full justify-start gap-2 rounded-lg border border-border bg-panel p-2">
             <TabsTrigger value="issues" className="gap-2 rounded-md px-4 py-2">
               <span>Issues</span>
               {hasIssues && (
-                <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${toneClasses[overallStatus.tone === "success" ? "warning" : overallStatus.tone].pill}`}>
-                  <span className={`h-2 w-2 rounded-full ${toneClasses[overallStatus.tone === "success" ? "warning" : overallStatus.tone].dot}`} />
+                <span className="inline-flex min-w-6 items-center justify-center rounded-full border border-status-danger/20 bg-status-danger-surface px-2 py-0.5 text-xs font-semibold text-status-danger-foreground">
                   {issueCounts.issues}
                 </span>
               )}
@@ -261,90 +318,164 @@ const TlpPaymentsDashboard = () => {
           </TabsList>
 
           <TabsContent value="issues" className="mt-0">
-            <Card className="border-border bg-panel shadow-sm">
-              <CardHeader className="border-b border-border">
-                <CardTitle id="issues-heading" className="text-xl text-foreground">
+            <section aria-labelledby="issues-heading" className="space-y-4">
+              <div className="space-y-1">
+                <h2 id="issues-heading" className="text-xl font-semibold text-foreground">
                   Issues Requiring Attention
-                </CardTitle>
-                <CardDescription>Items are prioritised by severity to support payment run review.</CardDescription>
-              </CardHeader>
-              <CardContent className="p-0">
-                {hasIssues ? (
-                  <ul className="divide-y divide-border">
-                    {sortedFlags.map((flag) => {
-                      const tone = toneClasses[flag.severity];
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  Items are prioritised by severity to support payment run review.
+                </p>
+              </div>
 
-                      return (
-                        <li key={`${flag.agent}-${flag.type}`} className="flex flex-col gap-3 px-6 py-4 xl:flex-row xl:items-center xl:justify-between">
-                          <div className="flex min-w-0 flex-wrap items-center gap-3">
-                            <span className="text-sm font-semibold text-foreground">{flag.agent}</span>
-                            <span className="inline-flex items-center rounded-full border border-border bg-panel-alt px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
-                              {flag.platform}
-                            </span>
-                            <span className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold ${tone.pill}`}>
-                              {flag.severity === "danger" ? "🔴" : "🟠"} {flag.type}
-                            </span>
-                          </div>
-                          <p className="text-sm text-muted-foreground xl:text-right">{flag.detail}</p>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                ) : (
-                  <div className="px-6 py-8 text-sm text-muted-foreground">No issues currently require attention.</div>
-                )}
-              </CardContent>
-            </Card>
+              {hasIssues ? (
+                <ul className="divide-y divide-border border-y border-border bg-panel">
+                  {sortedFlags.map((flag) => {
+                    const tone = toneClasses[flag.severity];
+
+                    return (
+                      <li
+                        key={`${flag.agent}-${flag.type}`}
+                        className="grid gap-3 px-4 py-4 lg:grid-cols-[minmax(340px,1.2fr)_minmax(280px,1fr)] lg:items-center lg:px-5"
+                      >
+                        <div className="flex min-w-0 flex-wrap items-center gap-3">
+                          <span className="font-semibold text-foreground">{flag.agent}</span>
+                          <span className="inline-flex items-center rounded-full border border-border bg-panel-alt px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                            {flag.platform}
+                          </span>
+                          <span className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold ${tone.pill}`}>
+                            {flag.type}
+                          </span>
+                        </div>
+                        <p className="text-sm text-muted-foreground lg:text-right">{flag.detail}</p>
+                      </li>
+                    );
+                  })}
+                </ul>
+              ) : (
+                <div className="border-y border-border bg-panel px-4 py-6 text-sm text-muted-foreground">
+                  No issues currently require attention.
+                </div>
+              )}
+            </section>
           </TabsContent>
 
           <TabsContent value="tlp-account-payments" className="mt-0">
-            <Card className="border-border bg-panel shadow-sm">
-              <CardHeader className="border-b border-border">
-                <CardTitle id="batch-payments-heading" className="text-xl text-foreground">
-                  Batch Payments
-                </CardTitle>
-                <CardDescription>Combined totals across all batch payment agents.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6 p-6">
-                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                  <SummaryMetric label="Holding Account Transfer (£)" value={batchSummary.holdingTransfer} emphasize />
-                  <SummaryMetric label="CBO Total (£)" value={batchSummary.cboTotal} emphasize />
-                  <SummaryMetric label="CBO Manual Payments (£)" value={batchSummary.cboManualPayments} emphasize />
-                  <SummaryMetric
-                    label="Reconciliation Difference (£)"
-                    value={batchSummary.reconciliationDifference}
-                    emphasize
-                    tone={batchSummary.reconciliationDifference !== 0 ? "danger" : "default"}
-                  />
+            <section aria-labelledby="tlp-account-payments-heading" className="space-y-6">
+              <div className="space-y-1">
+                <h2 id="tlp-account-payments-heading" className="text-xl font-semibold text-foreground">
+                  TLP Account Payments
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  Combined totals and file-to-sheet comparisons across selected software groups.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                {softwareGroups.map((group) => {
+                  const selected = selectedSoftware.includes(group.software);
+
+                  return (
+                    <Toggle
+                      key={group.software}
+                      pressed={selected}
+                      onPressedChange={(pressed) => toggleSoftwareGroup(group.software, pressed)}
+                      variant={selected ? "default" : "outline"}
+                      className={selected ? "bg-header text-header-foreground hover:bg-header" : "text-muted-foreground"}
+                    >
+                      {group.software}
+                    </Toggle>
+                  );
+                })}
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <SummaryMetric label="CBO Total (£)" value={softwareSummary.cboTotal} />
+                <SummaryMetric label="CBO Manual Payments (£)" value={softwareSummary.cboManualPayments} />
+              </div>
+
+              <div className="border-t border-border pt-6">
+                <div className="mb-4 grid grid-cols-[minmax(180px,1.2fr)_minmax(180px,1fr)_minmax(180px,1fr)_minmax(180px,1fr)] gap-4 px-4 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                  <span>Software</span>
+                  <span>Balancing Sheet Total</span>
+                  <span>Payment File Total</span>
+                  <span>Result</span>
                 </div>
 
-                <div className="border-t border-border pt-5">
-                  <div className="mb-3 text-sm font-medium text-muted-foreground">Contributing batch agents</div>
-                  <ul className="space-y-2 pl-4">
-                    {batchAgents.map((agent) => (
-                      <li key={agent.agent} className="flex items-center justify-between gap-4 text-sm">
-                        <span className="font-medium text-foreground">{agent.agent}</span>
-                        <span className="tabular-nums text-muted-foreground">{formatCurrency(agent.holdingTransfer)}</span>
-                      </li>
-                    ))}
-                  </ul>
+                <div className="divide-y divide-border border-y border-border bg-panel">
+                  {selectedGroups.map((group) => {
+                    const difference = group.paymentFileTotal - group.balancingSheetTotal;
+                    const matches = difference === 0;
+
+                    return (
+                      <div
+                        key={group.software}
+                        className="grid gap-3 px-4 py-4 lg:grid-cols-[minmax(180px,1.2fr)_minmax(180px,1fr)_minmax(180px,1fr)_minmax(180px,1fr)] lg:items-center"
+                      >
+                        <span className="font-semibold text-foreground">{group.software}</span>
+                        <span className="text-sm text-foreground">
+                          <span className="mr-2 text-muted-foreground">Balancing Sheet:</span>
+                          <span className="tabular-nums">{formatCurrency(group.balancingSheetTotal)}</span>
+                        </span>
+                        <span className="text-sm text-foreground">
+                          <span className="mr-2 text-muted-foreground">Payment File:</span>
+                          <span className="tabular-nums">{formatCurrency(group.paymentFileTotal)}</span>
+                        </span>
+                        <span className={`text-sm font-semibold ${matches ? "text-status-success" : "text-status-danger"}`}>
+                          {matches ? `✅ Match` : `❌ Difference: ${formatCurrency(difference)}`}
+                        </span>
+                      </div>
+                    );
+                  })}
+
+                  {selectedGroups.length === 0 && (
+                    <div className="px-4 py-6 text-sm text-muted-foreground">
+                      No software groups selected.
+                    </div>
+                  )}
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </section>
           </TabsContent>
 
           <TabsContent value="manual-bank-payments" className="mt-0">
-            <Card className="border-border bg-panel shadow-sm">
-              <CardHeader className="border-b border-border">
-                <CardTitle id="third-party-heading" className="text-xl text-foreground">
-                  Third Party Accounts
-                </CardTitle>
-                <CardDescription>Issue and warning rows are surfaced first for operational review.</CardDescription>
-              </CardHeader>
-              <CardContent className="p-0">
-                <div className="overflow-x-auto">
-                  <div className="min-w-[1100px]">
-                    <div className="grid grid-cols-[120px_minmax(220px,1.4fr)_120px_repeat(4,minmax(150px,1fr))] border-b border-border bg-panel px-6 py-3 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+            <section aria-labelledby="manual-bank-payments-heading" className="space-y-8">
+              <div className="space-y-1">
+                <h2 id="manual-bank-payments-heading" className="text-xl font-semibold text-foreground">
+                  Manual Bank Payments
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  Operational transfers and third party agent payment activity for today&apos;s run.
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                <div>
+                  <h3 className="text-base font-semibold text-foreground">Holding Account Transfers</h3>
+                  <p className="text-sm text-muted-foreground">Separate holding transfer agents for manual bank payment oversight.</p>
+                </div>
+
+                <div className="divide-y divide-border border-y border-border bg-panel">
+                  {holdingTransferAgents.map((agent) => (
+                    <div key={agent.agent} className="flex items-center justify-between gap-4 px-4 py-4">
+                      <span className="font-medium text-foreground">{agent.agent}</span>
+                      <span className="tabular-nums text-sm font-semibold text-foreground">
+                        {formatCurrency(agent.holdingTransfer)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div>
+                  <h3 className="text-base font-semibold text-foreground">Third Party Agents</h3>
+                  <p className="text-sm text-muted-foreground">Issue and warning rows are surfaced first for rapid review.</p>
+                </div>
+
+                <div className="overflow-x-auto rounded-lg border border-border">
+                  <div className="min-w-[1120px]">
+                    <div className="grid grid-cols-[130px_minmax(220px,1.5fr)_120px_repeat(4,minmax(140px,1fr))] border-b border-border bg-panel px-4 py-3 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
                       <span>Status</span>
                       <span>Agent</span>
                       <span>Platform</span>
@@ -362,13 +493,15 @@ const TlpPaymentsDashboard = () => {
                       return (
                         <div
                           key={agent.agent}
-                          className={`grid grid-cols-[120px_minmax(220px,1.4fr)_120px_repeat(4,minmax(150px,1fr))] items-center border-b border-border px-6 py-4 text-sm ${index % 2 === 0 ? "bg-panel" : "bg-panel-alt/60"}`}
+                          className={`grid grid-cols-[130px_minmax(220px,1.5fr)_120px_repeat(4,minmax(140px,1fr))] items-center border-b border-border px-4 py-4 text-sm ${index % 2 === 0 ? "bg-panel" : "bg-panel-alt/60"}`}
                         >
                           <span className={`inline-flex w-fit items-center rounded-full border px-3 py-1 text-xs font-semibold ${tone.pill}`}>
                             {meta.label}
                           </span>
                           <span className="font-semibold text-foreground">{agent.agent}</span>
-                          <span className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">{agent.platform}</span>
+                          <span className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                            {agent.platform}
+                          </span>
                           <span className="tabular-nums text-foreground">{formatCurrency(agent.holdingTransfer)}</span>
                           <span className="tabular-nums text-foreground">{formatCurrency(agent.cboTotal)}</span>
                           <span className="tabular-nums text-foreground">{formatCurrency(agent.cboManualPayments)}</span>
@@ -380,13 +513,15 @@ const TlpPaymentsDashboard = () => {
                     })}
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </section>
           </TabsContent>
         </Tabs>
       </div>
     </main>
   );
 };
+
+void batchSummary;
 
 export default TlpPaymentsDashboard;
