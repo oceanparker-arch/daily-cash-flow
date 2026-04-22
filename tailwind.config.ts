@@ -17,6 +17,32 @@ export default {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
+        app: "hsl(var(--app-shell))",
+        panel: {
+          DEFAULT: "hsl(var(--panel))",
+          alt: "hsl(var(--panel-alt))",
+        },
+        header: {
+          DEFAULT: "hsl(var(--header))",
+          foreground: "hsl(var(--header-foreground))",
+        },
+        status: {
+          success: {
+            DEFAULT: "hsl(var(--status-success))",
+            foreground: "hsl(var(--status-success-foreground))",
+            surface: "hsl(var(--status-success-surface))",
+          },
+          warning: {
+            DEFAULT: "hsl(var(--status-warning))",
+            foreground: "hsl(var(--status-warning-foreground))",
+            surface: "hsl(var(--status-warning-surface))",
+          },
+          danger: {
+            DEFAULT: "hsl(var(--status-danger))",
+            foreground: "hsl(var(--status-danger-foreground))",
+            surface: "hsl(var(--status-danger-surface))",
+          },
+        },
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
         primary: {
@@ -80,10 +106,20 @@ export default {
             height: "0",
           },
         },
+        "soft-pulse": {
+          "0%, 100%": { opacity: "1" },
+          "50%": { opacity: ".72" },
+        },
+        "spin-slow": {
+          from: { transform: "rotate(0deg)" },
+          to: { transform: "rotate(360deg)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "soft-pulse": "soft-pulse 2.4s ease-in-out infinite",
+        "spin-slow": "spin-slow 1.2s linear infinite",
       },
     },
   },
