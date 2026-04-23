@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
-import { RefreshCw } from "lucide-react";
+import { Check, ChevronDown, RefreshCw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Toggle } from "@/components/ui/toggle";
 
@@ -226,6 +227,10 @@ const TlpPaymentsDashboard = () => {
   const hasIssues = sortedFlags.length > 0;
   const defaultSelectedSoftware = softwareGroups.map((group) => group.software);
   const [selectedSoftware, setSelectedSoftware] = useState<string[]>(defaultSelectedSoftware);
+  const [completedHoldingTransfers, setCompletedHoldingTransfers] = useState<Set<string>>(new Set());
+  const [completedThirdPartyAgents, setCompletedThirdPartyAgents] = useState<Set<string>>(new Set());
+  const [holdingCompletedOpen, setHoldingCompletedOpen] = useState(false);
+  const [thirdPartyCompletedOpen, setThirdPartyCompletedOpen] = useState(false);
 
   const selectedGroups = useMemo(() => {
     const filtered = softwareGroups.filter((group) => selectedSoftware.includes(group.software));
@@ -246,6 +251,26 @@ const TlpPaymentsDashboard = () => {
     { cboTotal: 0, cboManualPayments: 0 },
   );
 
+  const activeHoldingTransfers = useMemo(
+    () => holdingTransferAgents.filter((agent) => !completedHoldingTransfers.has(agent.agent)),
+    [completedHoldingTransfers],
+  );
+
+  const completedHoldingTransferList = useMemo(
+    () => holdingTransferAgents.filter((agent) => completedHoldingTransfers.has(agent.agent)),
+    [completedHoldingTransfers],
+  );
+
+  const activeThirdPartyAgents = useMemo(
+    () => sortedAgents.filter((agent) => !completedThirdPartyAgents.has(agent.agent)),
+    [completedThirdPartyAgents],
+  );
+
+  const completedThirdPartyAgentList = useMemo(
+    () => sortedAgents.filter((agent) => completedThirdPartyAgents.has(agent.agent)),
+    [completedThirdPartyAgents],
+  );
+
   const toggleSoftwareGroup = (software: string, pressed: boolean) => {
     setSelectedSoftware((current) => {
       if (!pressed) {
@@ -262,6 +287,14 @@ const TlpPaymentsDashboard = () => {
           softwareGroups.findIndex((group) => group.software === b),
       );
     });
+  };
+
+  const markHoldingTransferDone = (agentName: string) => {
+    setCompletedHoldingTransfers((current) => new Set(current).add(agentName));
+  };
+
+  const markThirdPartyAgentDone = (agentName: string) => {
+    setCompletedThirdPartyAgents((current) => new Set(current).add(agentName));
   };
 
   return (
@@ -460,15 +493,65 @@ const TlpPaymentsDashboard = () => {
                 </div>
 
                 <div className="divide-y divide-border border-y border-border bg-panel">
-                  {holdingTransferAgents.map((agent) => (
+                  {activeHoldingTransfers.map((agent) => (
                     <div key={agent.agent} className="flex items-center justify-between gap-4 px-4 py-4">
-                      <span className="font-medium text-foreground">{agent.agent}</span>
-                      <span className="tabular-nums text-sm font-semibold text-foreground">
-                        {formatCurrency(agent.holdingTransfer)}
-                      </span>
+                      <div className="space-y-1">
+                        <span className="block font-semibold text-foreground">{agent.agent}</span>
+                        <span className="tabular-nums text-sm font-semibold text-foreground">
+                          {formatCurrency(agent.holdingTransfer)}
+                        </span>
+                      </div>
+                      <Button
+                        type="button"
+                        onClick={() => markHoldingTransferDone(agent.agent)}
+                        className="min-w-32"
+                      >
+                        <Check />
+                        Mark as Done
+                      </Button>
                     </div>
                   ))}
+
+                  {activeHoldingTransfers.length === 0 && (
+                    <div className="px-4 py-6 text-sm text-muted-foreground">No active holding account transfers remaining.</div>
+                  )}
                 </div>
+
+                <Collapsible open={holdingCompletedOpen} onOpenChange={setHoldingCompletedOpen} className="rounded-lg border border-border bg-panel">
+                  <CollapsibleTrigger className="flex w-full items-center justify-between gap-4 px-4 py-3 text-left">
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm font-semibold text-foreground">Completed ({completedHoldingTransferList.length})</span>
+                      <span className="inline-flex min-w-6 items-center justify-center rounded-full border border-border bg-panel-alt px-2 py-0.5 text-xs font-semibold text-muted-foreground">
+                        {completedHoldingTransferList.length}
+                      </span>
+                    </div>
+                    <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${holdingCompletedOpen ? "rotate-180" : ""}`} />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="border-t border-border">
+                    {completedHoldingTransferList.length > 0 ? (
+                      <div className="divide-y divide-border">
+                        {completedHoldingTransferList.map((agent) => (
+                          <div key={agent.agent} className="flex items-center justify-between gap-4 px-4 py-4 text-muted-foreground">
+                            <div className="space-y-1">
+                              <span className="block font-semibold text-muted-foreground">{agent.agent}</span>
+                              <span className="tabular-nums text-sm font-semibold">{formatCurrency(agent.holdingTransfer)}</span>
+                            </div>
+                            <Button
+                              type="button"
+                              disabled
+                              className="min-w-32 border border-status-success/20 bg-status-success-surface text-status-success-foreground hover:bg-status-success-surface"
+                            >
+                              <Check />
+                              Done
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="px-4 py-4 text-sm text-muted-foreground">No completed holding account transfers yet.</div>
+                    )}
+                  </CollapsibleContent>
+                </Collapsible>
               </div>
 
               <div className="space-y-3">
@@ -478,45 +561,109 @@ const TlpPaymentsDashboard = () => {
                 </div>
 
                 <div className="overflow-x-auto rounded-lg border border-border">
-                  <div className="min-w-[1120px]">
-                    <div className="grid grid-cols-[130px_minmax(220px,1.5fr)_120px_repeat(4,minmax(140px,1fr))] border-b border-border bg-panel px-4 py-3 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                  <div className="min-w-[1080px]">
+                    <div className="grid grid-cols-[130px_minmax(260px,1.7fr)_minmax(140px,1fr)_minmax(160px,1fr)_160px] border-b border-border bg-panel px-4 py-3 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
                       <span>Status</span>
                       <span>Agent</span>
-                      <span>Platform</span>
-                      <span>Holding Account Transfer</span>
-                      <span>CBO Total</span>
-                      <span>CBO Manual Payments</span>
-                      <span>Reconciliation Difference</span>
+                      <span>Total</span>
+                      <span>Manual Payments</span>
+                      <span className="text-right">Action</span>
                     </div>
 
-                    {sortedAgents.map((agent, index) => {
+                    {activeThirdPartyAgents.map((agent, index) => {
                       const meta = statusMeta[agent.status];
                       const tone = toneClasses[meta.tone];
-                      const hasReconDifference = agent.reconciliationDifference !== 0;
 
                       return (
                         <div
                           key={agent.agent}
-                          className={`grid grid-cols-[130px_minmax(220px,1.5fr)_120px_repeat(4,minmax(140px,1fr))] items-center border-b border-border px-4 py-4 text-sm ${index % 2 === 0 ? "bg-panel" : "bg-panel-alt/60"}`}
+                          className={`grid grid-cols-[130px_minmax(260px,1.7fr)_minmax(140px,1fr)_minmax(160px,1fr)_160px] items-center border-b border-border px-4 py-4 text-sm ${index % 2 === 0 ? "bg-panel" : "bg-panel-alt/60"}`}
                         >
                           <span className={`inline-flex w-fit items-center rounded-full border px-3 py-1 text-xs font-semibold ${tone.pill}`}>
                             {meta.label}
                           </span>
-                          <span className="font-semibold text-foreground">{agent.agent}</span>
-                          <span className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
-                            {agent.platform}
-                          </span>
-                          <span className="tabular-nums text-foreground">{formatCurrency(agent.holdingTransfer)}</span>
+                          <div className="space-y-1">
+                            <span className="block font-semibold text-foreground">{agent.agent}</span>
+                            <span className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                              {agent.platform}
+                            </span>
+                          </div>
                           <span className="tabular-nums text-foreground">{formatCurrency(agent.cboTotal)}</span>
                           <span className="tabular-nums text-foreground">{formatCurrency(agent.cboManualPayments)}</span>
-                          <span className={`tabular-nums font-semibold ${hasReconDifference ? "text-status-danger" : "text-status-success"}`}>
-                            {formatCurrency(agent.reconciliationDifference)}
-                          </span>
+                          <div className="flex justify-end">
+                            <Button
+                              type="button"
+                              onClick={() => markThirdPartyAgentDone(agent.agent)}
+                              className="min-w-32"
+                            >
+                              <Check />
+                              Mark as Done
+                            </Button>
+                          </div>
                         </div>
                       );
                     })}
+
+                    {activeThirdPartyAgents.length === 0 && (
+                      <div className="px-4 py-6 text-sm text-muted-foreground">No active third party agents remaining.</div>
+                    )}
                   </div>
                 </div>
+
+                <Collapsible open={thirdPartyCompletedOpen} onOpenChange={setThirdPartyCompletedOpen} className="rounded-lg border border-border bg-panel">
+                  <CollapsibleTrigger className="flex w-full items-center justify-between gap-4 px-4 py-3 text-left">
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm font-semibold text-foreground">Completed ({completedThirdPartyAgentList.length})</span>
+                      <span className="inline-flex min-w-6 items-center justify-center rounded-full border border-border bg-panel-alt px-2 py-0.5 text-xs font-semibold text-muted-foreground">
+                        {completedThirdPartyAgentList.length}
+                      </span>
+                    </div>
+                    <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${thirdPartyCompletedOpen ? "rotate-180" : ""}`} />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="border-t border-border">
+                    {completedThirdPartyAgentList.length > 0 ? (
+                      <div className="overflow-x-auto">
+                        <div className="min-w-[1080px] divide-y divide-border">
+                          {completedThirdPartyAgentList.map((agent) => {
+                            const meta = statusMeta[agent.status];
+                            const tone = toneClasses[meta.tone];
+
+                            return (
+                              <div
+                                key={agent.agent}
+                                className="grid grid-cols-[130px_minmax(260px,1.7fr)_minmax(140px,1fr)_minmax(160px,1fr)_160px] items-center px-4 py-4 text-sm text-muted-foreground"
+                              >
+                                <span className={`inline-flex w-fit items-center rounded-full border px-3 py-1 text-xs font-semibold opacity-70 ${tone.pill}`}>
+                                  {meta.label}
+                                </span>
+                                <div className="space-y-1">
+                                  <span className="block font-semibold text-muted-foreground">{agent.agent}</span>
+                                  <span className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                                    {agent.platform}
+                                  </span>
+                                </div>
+                                <span className="tabular-nums">{formatCurrency(agent.cboTotal)}</span>
+                                <span className="tabular-nums">{formatCurrency(agent.cboManualPayments)}</span>
+                                <div className="flex justify-end">
+                                  <Button
+                                    type="button"
+                                    disabled
+                                    className="min-w-32 border border-status-success/20 bg-status-success-surface text-status-success-foreground hover:bg-status-success-surface"
+                                  >
+                                    <Check />
+                                    Done
+                                  </Button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="px-4 py-4 text-sm text-muted-foreground">No completed third party agents yet.</div>
+                    )}
+                  </CollapsibleContent>
+                </Collapsible>
               </div>
             </section>
           </TabsContent>
