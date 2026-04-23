@@ -272,16 +272,11 @@ const TlpPaymentsDashboard = () => {
 
   const togglePlatform = (platform: string) => {
     setSelectedPlatforms((current) => {
-      if (current.includes(platform)) {
-        if (current.length === 1) return current;
-        return current.filter((item) => item !== platform);
+      if (current.length === 1 && current[0] === platform) {
+        return current;
       }
 
-      return [...current, platform].sort(
-        (a, b) =>
-          softwareGroups.findIndex((g) => g.software === a) -
-          softwareGroups.findIndex((g) => g.software === b),
-      );
+      return [platform];
     });
   };
 
