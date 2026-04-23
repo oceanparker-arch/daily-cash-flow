@@ -133,36 +133,9 @@ const lastRefreshLabel = new Intl.DateTimeFormat("en-GB", {
   minute: "2-digit",
 }).format(new Date());
 
-const sortedFlags = [...issueFlags].sort(
-  (a, b) => severityOrder[a.severity] - severityOrder[b.severity] || a.agent.localeCompare(b.agent),
-);
-
 const sortedAgents = [...thirdPartyAgents].sort(
   (a, b) => statusOrder[a.status] - statusOrder[b.status] || a.agent.localeCompare(b.agent),
 );
-
-const issueCounts = {
-  issues: sortedFlags.length,
-  agents: new Set(sortedFlags.map((flag) => flag.agent)).size,
-};
-
-const overallStatus = sortedFlags.some((flag) => flag.severity === "danger")
-  ? {
-      tone: "danger" as const,
-      label: "Action Required",
-      summary: `${issueCounts.issues} issues found across ${issueCounts.agents} agents`,
-    }
-  : sortedFlags.length > 0
-    ? {
-        tone: "warning" as const,
-        label: "Attention Required",
-        summary: `${issueCounts.issues} issues found across ${issueCounts.agents} agents`,
-      }
-    : {
-        tone: "success" as const,
-        label: "All Clear",
-        summary: "All files present, all totals match, no reconciliation differences",
-      };
 
 const toneClasses = {
   success: {
@@ -199,17 +172,55 @@ const SummaryMetric = ({ label, value }: { label: string; value: number }) => (
 );
 
 const TlpPaymentsDashboard = () => {
-  const hasIssues = sortedFlags.length > 0;
-  const defaultSelectedSoftware = softwareGroups.map((group) => group.software);
-  const [selectedSoftware, setSelectedSoftware] = useState<string[]>(defaultSelectedSoftware);
-  const [selectedThirdPartySoftware, setSelectedThirdPartySoftware] = useState<string[]>(defaultSelectedSoftware);
+  const allPlatforms = softwareGroups.map((group) => group.software);
+  const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>(allPlatforms);
   const [completedHoldingTransfers, setCompletedHoldingTransfers] = useState<Set<string>>(new Set());
   const [completedThirdPartyAgents, setCompletedThirdPartyAgents] = useState<Set<string>>(new Set());
   const [holdingCompletedOpen, setHoldingCompletedOpen] = useState(false);
   const [thirdPartyCompletedOpen, setThirdPartyCompletedOpen] = useState(false);
 
+  const sortedFlags = useMemo(
+    () =>
+      [...issueFlags]
+        .filter((flag) => selectedPlatforms.some((platform) => platform.toUpperCase() === flag.platform.toUpperCase()))
+        .sort((a, b) => severityOrder[a.severity] - severityOrder[b.severity] || a.agent.localeCompare(b.agent)),
+    [selectedPlatforms],
+  );
+
+  const hasIssues = sortedFlags.length > 0;
+
+  const issueCounts = useMemo(
+    () => ({
+      issues: sortedFlags.length,
+      agents: new Set(sortedFlags.map((flag) => flag.agent)).size,
+    }),
+    [sortedFlags],
+  );
+
+  const overallStatus = useMemo(
+    () =>
+      sortedFlags.some((flag) => flag.severity === "danger")
+        ? {
+            tone: "danger" as const,
+            label: "Action Required",
+            summary: `${issueCounts.issues} issues found across ${issueCounts.agents} agents`,
+          }
+        : sortedFlags.length > 0
+          ? {
+              tone: "warning" as const,
+              label: "Attention Required",
+              summary: `${issueCounts.issues} issues found across ${issueCounts.agents} agents`,
+            }
+          : {
+              tone: "success" as const,
+              label: "All Clear",
+              summary: "All files present, all totals match, no reconciliation differences",
+            },
+    [issueCounts.agents, issueCounts.issues, sortedFlags],
+  );
+
   const selectedGroups = useMemo(() => {
-    const filtered = softwareGroups.filter((group) => selectedSoftware.includes(group.software));
+    const filtered = softwareGroups.filter((group) => selectedPlatforms.includes(group.software));
 
     return [...filtered].sort((a, b) => {
       const aMismatch = a.balancingSheetTotal !== a.paymentFileTotal ? 0 : 1;
@@ -217,7 +228,7 @@ const TlpPaymentsDashboard = () => {
 
       return aMismatch - bMismatch || a.software.localeCompare(b.software);
     });
-  }, [selectedSoftware]);
+  }, [selectedPlatforms]);
 
   const softwareSummary = selectedGroups.reduce(
     (totals, group) => ({
@@ -230,44 +241,43 @@ const TlpPaymentsDashboard = () => {
   const activeHoldingTransfers = useMemo(
     () =>
       holdingTransferAgents.filter(
-        (agent) =>
-          !completedHoldingTransfers.has(agent.agent) && selectedThirdPartySoftware.includes(agent.platform),
+        (agent) => !completedHoldingTransfers.has(agent.agent) && selectedPlatforms.includes(agent.platform),
       ),
-    [completedHoldingTransfers, selectedThirdPartySoftware],
+    [completedHoldingTransfers, selectedPlatforms],
   );
 
   const completedHoldingTransferList = useMemo(
     () =>
       holdingTransferAgents.filter(
-        (agent) => completedHoldingTransfers.has(agent.agent) && selectedThirdPartySoftware.includes(agent.platform),
+        (agent) => completedHoldingTransfers.has(agent.agent) && selectedPlatforms.includes(agent.platform),
       ),
-    [completedHoldingTransfers, selectedThirdPartySoftware],
+    [completedHoldingTransfers, selectedPlatforms],
   );
 
   const activeThirdPartyAgents = useMemo(
     () =>
       sortedAgents.filter(
-        (agent) => !completedThirdPartyAgents.has(agent.agent) && selectedThirdPartySoftware.includes(agent.platform),
+        (agent) => !completedThirdPartyAgents.has(agent.agent) && selectedPlatforms.includes(agent.platform),
       ),
-    [completedThirdPartyAgents, selectedThirdPartySoftware],
+    [completedThirdPartyAgents, selectedPlatforms],
   );
 
   const completedThirdPartyAgentList = useMemo(
     () =>
       sortedAgents.filter(
-        (agent) => completedThirdPartyAgents.has(agent.agent) && selectedThirdPartySoftware.includes(agent.platform),
+        (agent) => completedThirdPartyAgents.has(agent.agent) && selectedPlatforms.includes(agent.platform),
       ),
-    [completedThirdPartyAgents, selectedThirdPartySoftware],
+    [completedThirdPartyAgents, selectedPlatforms],
   );
 
-  const toggleSoftwareGroup = (software: string) => {
-    setSelectedSoftware((current) => {
-      if (current.includes(software)) {
+  const togglePlatform = (platform: string) => {
+    setSelectedPlatforms((current) => {
+      if (current.includes(platform)) {
         if (current.length === 1) return current;
-        return current.filter((s) => s !== software);
+        return current.filter((item) => item !== platform);
       }
 
-      return [...current, software].sort(
+      return [...current, platform].sort(
         (a, b) =>
           softwareGroups.findIndex((g) => g.software === a) -
           softwareGroups.findIndex((g) => g.software === b),
@@ -275,20 +285,13 @@ const TlpPaymentsDashboard = () => {
     });
   };
 
-  const toggleThirdPartySoftwareGroup = (software: string) => {
-    setSelectedThirdPartySoftware((current) => {
-      if (current.includes(software)) {
-        if (current.length === 1) return current;
-        return current.filter((s) => s !== software);
-      }
+  const selectAllPlatforms = () => setSelectedPlatforms(allPlatforms);
 
-      return [...current, software].sort(
-        (a, b) =>
-          softwareGroups.findIndex((g) => g.software === a) -
-          softwareGroups.findIndex((g) => g.software === b),
-      );
+  const clearPlatforms = () =>
+    setSelectedPlatforms((current) => {
+      if (current.length === 1) return current;
+      return [current[0]];
     });
-  };
 
   const markHoldingTransferDone = (agentName: string) => {
     setCompletedHoldingTransfers((prev) => new Set([...prev, agentName]));
@@ -301,44 +304,78 @@ const TlpPaymentsDashboard = () => {
   return (
     <main className="min-h-screen bg-app">
       <div className="mx-auto flex w-full max-w-[1680px] flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
-        <div className="sticky top-0 z-20 space-y-4 bg-app pb-2">
-          <header className="rounded-lg border border-border bg-header text-header-foreground shadow-sm">
-            <div className="flex flex-col gap-4 px-5 py-4 lg:flex-row lg:items-center lg:justify-between lg:px-6">
-              <div className="space-y-1">
-                <h1 className="text-2xl font-semibold tracking-tight">TLP Daily Payments Dashboard</h1>
-                <div className="flex flex-col gap-1 text-sm text-header-foreground/80 sm:flex-row sm:gap-6">
-                  <span>Today: {todayLabel}</span>
-                  <span>Last refreshed: {lastRefreshLabel}</span>
-                </div>
-              </div>
-
-              <Button variant="toolbar" className="min-w-32 bg-panel text-foreground hover:-translate-y-0.5">
-                <RefreshCw className="motion-safe:group-hover:animate-spin-slow" />
-                Refresh
-              </Button>
-            </div>
-          </header>
-
-          <section
-            aria-label="Overall run status"
-            className={`rounded-lg border px-5 py-4 shadow-sm ${toneClasses[overallStatus.tone].banner}`}
-          >
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-              <div className="flex items-center gap-3">
-                <span
-                  className={`h-3.5 w-3.5 rounded-full ${toneClasses[overallStatus.tone].dot} ${overallStatus.tone !== "success" ? "motion-safe:animate-soft-pulse" : ""}`}
-                />
-                <div>
-                  <p className="text-lg font-semibold">{overallStatus.label}</p>
-                  <p className="text-sm opacity-90">{overallStatus.summary}</p>
-                </div>
-              </div>
-            </div>
-          </section>
-        </div>
-
         <Tabs defaultValue="issues" className="space-y-6 pb-4">
-          <TabsList className="h-auto w-full justify-start gap-2 rounded-lg border border-border bg-panel p-2">
+          <div className="sticky top-0 z-20 space-y-4 bg-app pb-2">
+            <header className="rounded-lg border border-border bg-header text-header-foreground shadow-sm">
+              <div className="flex flex-col gap-4 px-5 py-4 lg:flex-row lg:items-center lg:justify-between lg:px-6">
+                <div className="space-y-1">
+                  <h1 className="text-2xl font-semibold tracking-tight">TLP Daily Payments Dashboard</h1>
+                  <div className="flex flex-col gap-1 text-sm text-header-foreground/80 sm:flex-row sm:gap-6">
+                    <span>Today: {todayLabel}</span>
+                    <span>Last refreshed: {lastRefreshLabel}</span>
+                  </div>
+                </div>
+
+                <Button variant="toolbar" className="min-w-32 bg-panel text-foreground hover:-translate-y-0.5">
+                  <RefreshCw className="motion-safe:group-hover:animate-spin-slow" />
+                  Refresh
+                </Button>
+              </div>
+            </header>
+
+            <section
+              aria-label="Overall run status"
+              className={`rounded-lg border px-5 py-4 shadow-sm ${toneClasses[overallStatus.tone].banner}`}
+            >
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div className="flex items-center gap-3">
+                  <span
+                    className={`h-3.5 w-3.5 rounded-full ${toneClasses[overallStatus.tone].dot} ${overallStatus.tone !== "success" ? "motion-safe:animate-soft-pulse" : ""}`}
+                  />
+                  <div>
+                    <p className="text-lg font-semibold">{overallStatus.label}</p>
+                    <p className="text-sm opacity-90">{overallStatus.summary}</p>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section className="rounded-lg border border-border bg-panel px-4 py-3 shadow-sm">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:gap-3">
+                  <span className="text-sm font-medium text-muted-foreground">Platforms:</span>
+                  <div className="flex flex-wrap gap-2">
+                    {softwareGroups.map((group) => {
+                      const selected = selectedPlatforms.includes(group.software);
+
+                      return (
+                        <Toggle
+                          key={group.software}
+                          pressed={selected}
+                          onPressedChange={() => togglePlatform(group.software)}
+                          variant={selected ? "default" : "outline"}
+                          className={selected ? "bg-header text-header-foreground hover:bg-header" : "text-muted-foreground"}
+                        >
+                          {group.software}
+                        </Toggle>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 self-end lg:self-auto">
+                  <button type="button" onClick={selectAllPlatforms} className="text-sm font-medium text-muted-foreground hover:text-foreground">
+                    Select all
+                  </button>
+                  <span className="text-muted-foreground">/</span>
+                  <button type="button" onClick={clearPlatforms} className="text-sm font-medium text-muted-foreground hover:text-foreground">
+                    Clear
+                  </button>
+                </div>
+              </div>
+            </section>
+
+            <TabsList className="h-auto w-full justify-start gap-2 rounded-lg border border-border bg-panel p-2">
             <TabsTrigger value="issues" className="gap-2 rounded-md px-4 py-2">
               <span>Issues</span>
               {hasIssues && (
@@ -353,7 +390,8 @@ const TlpPaymentsDashboard = () => {
             <TabsTrigger value="manual-bank-payments" className="rounded-md px-4 py-2">
               Manual Bank Payments
             </TabsTrigger>
-          </TabsList>
+            </TabsList>
+          </div>
 
           <TabsContent value="issues" className="mt-0">
             <section aria-labelledby="issues-heading" className="space-y-4">
@@ -407,24 +445,6 @@ const TlpPaymentsDashboard = () => {
                 <p className="text-sm text-muted-foreground">
                   Combined totals and file-to-sheet comparisons across selected software groups.
                 </p>
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                {softwareGroups.map((group) => {
-                  const selected = selectedSoftware.includes(group.software);
-
-                  return (
-                    <Toggle
-                      key={group.software}
-                      pressed={selected}
-                      onPressedChange={() => toggleSoftwareGroup(group.software)}
-                      variant={selected ? "default" : "outline"}
-                      className={selected ? "bg-header text-header-foreground hover:bg-header" : "text-muted-foreground"}
-                    >
-                      {group.software}
-                    </Toggle>
-                  );
-                })}
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">
@@ -565,24 +585,6 @@ const TlpPaymentsDashboard = () => {
                 <div>
                   <h3 className="text-base font-semibold text-foreground">Third Party Agents</h3>
                   <p className="text-sm text-muted-foreground">Issue and warning rows are surfaced first for rapid review.</p>
-                </div>
-
-                <div className="flex flex-wrap gap-2">
-                  {softwareGroups.map((group) => {
-                    const selected = selectedThirdPartySoftware.includes(group.software);
-
-                    return (
-                      <Toggle
-                        key={`third-party-${group.software}`}
-                        pressed={selected}
-                        onPressedChange={() => toggleThirdPartySoftwareGroup(group.software)}
-                        variant={selected ? "default" : "outline"}
-                        className={selected ? "bg-header text-header-foreground hover:bg-header" : "text-muted-foreground"}
-                      >
-                        {group.software}
-                      </Toggle>
-                    );
-                  })}
                 </div>
 
                 <div className="overflow-x-auto rounded-lg border border-border">
