@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
-import { RefreshCw } from "lucide-react";
+import { Check, ChevronDown, RefreshCw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Toggle } from "@/components/ui/toggle";
 
@@ -45,11 +46,6 @@ type SoftwareGroup = {
   paymentFileTotal: number;
   cboTotal: number;
   cboManualPayments: number;
-  issueSources?: Array<{
-    agent: string;
-    file: string;
-    detail: string;
-  }>;
 };
 
 type HoldingTransferAgent = {
@@ -112,32 +108,12 @@ const thirdPartyAgents: ThirdPartyAgent[] = [
 const softwareGroups: SoftwareGroup[] = [
   { software: "10Ninety", balancingSheetTotal: 18240, paymentFileTotal: 18240, cboTotal: 17650, cboManualPayments: 590 },
   { software: "Jupix", balancingSheetTotal: 21485, paymentFileTotal: 21485, cboTotal: 20735, cboManualPayments: 750 },
-  {
-    software: "Alto",
-    balancingSheetTotal: 19860,
-    paymentFileTotal: 19610,
-    cboTotal: 19010,
-    cboManualPayments: 850,
-    issueSources: [
-      { agent: "Kingsley Finance", file: "alto_payments_2026-04-22.csv", detail: "Payment file omitted one outbound payment line worth £250.00." },
-      { agent: "Cedar Residential", file: "alto_balancing_2026-04-22.xlsx", detail: "Balancing sheet includes a manual adjustment not present in the payment file." },
-    ],
-  },
+  { software: "Alto", balancingSheetTotal: 19860, paymentFileTotal: 19610, cboTotal: 19010, cboManualPayments: 850 },
   { software: "Street", balancingSheetTotal: 23620, paymentFileTotal: 23620, cboTotal: 22940, cboManualPayments: 680 },
   { software: "Acquaint", balancingSheetTotal: 17275, paymentFileTotal: 17275, cboTotal: 16625, cboManualPayments: 650 },
   { software: "Genie", balancingSheetTotal: 15430, paymentFileTotal: 15430, cboTotal: 14910, cboManualPayments: 520 },
   { software: "Veco", balancingSheetTotal: 14380, paymentFileTotal: 14380, cboTotal: 13920, cboManualPayments: 460 },
-  {
-    software: "SME",
-    balancingSheetTotal: 16790,
-    paymentFileTotal: 17040,
-    cboTotal: 16140,
-    cboManualPayments: 650,
-    issueSources: [
-      { agent: "Northpoint Estates", file: "sme_recon_2026-04-22.csv", detail: "Reconciliation export contains an extra £250.00 entry pending investigation." },
-      { agent: "Harbour & Co", file: "sme_payment_file_2026-04-22.csv", detail: "Payment file total exceeds balancing sheet by £250.00." },
-    ],
-  },
+  { software: "SME", balancingSheetTotal: 16790, paymentFileTotal: 17040, cboTotal: 16140, cboManualPayments: 650 },
   { software: "Reapit", balancingSheetTotal: 24810, paymentFileTotal: 24810, cboTotal: 23990, cboManualPayments: 820 },
 ];
 
@@ -251,7 +227,10 @@ const TlpPaymentsDashboard = () => {
   const hasIssues = sortedFlags.length > 0;
   const defaultSelectedSoftware = softwareGroups.map((group) => group.software);
   const [selectedSoftware, setSelectedSoftware] = useState<string[]>(defaultSelectedSoftware);
-  const [expandedSoftwareIssues, setExpandedSoftwareIssues] = useState<string[]>([]);
+  const [completedHoldingTransfers, setCompletedHoldingTransfers] = useState<Set<string>>(new Set());
+  const [completedThirdPartyAgents, setCompletedThirdPartyAgents] = useState<Set<string>>(new Set());
+  const [holdingCompletedOpen, setHoldingCompletedOpen] = useState(false);
+  const [thirdPartyCompletedOpen, setThirdPartyCompletedOpen] = useState(false);
 
   const selectedGroups = useMemo(() => {
     const filtered = softwareGroups.filter((group) => selectedSoftware.includes(group.software));
@@ -272,10 +251,30 @@ const TlpPaymentsDashboard = () => {
     { cboTotal: 0, cboManualPayments: 0 },
   );
 
+  const activeHoldingTransfers = useMemo(
+    () => holdingTransferAgents.filter((agent) => !completedHoldingTransfers.has(agent.agent)),
+    [completedHoldingTransfers],
+  );
+
+  const completedHoldingTransferList = useMemo(
+    () => holdingTransferAgents.filter((agent) => completedHoldingTransfers.has(agent.agent)),
+    [completedHoldingTransfers],
+  );
+
+  const activeThirdPartyAgents = useMemo(
+    () => sortedAgents.filter((agent) => !completedThirdPartyAgents.has(agent.agent)),
+    [completedThirdPartyAgents],
+  );
+
+  const completedThirdPartyAgentList = useMemo(
+    () => sortedAgents.filter((agent) => completedThirdPartyAgents.has(agent.agent)),
+    [completedThirdPartyAgents],
+  );
+
   const toggleSoftwareGroup = (software: string, pressed: boolean) => {
     setSelectedSoftware((current) => {
       if (!pressed) {
-        return current.length === 1 && current[0] === software ? defaultSelectedSoftware : [software];
+        return current.length === 1 && current[0] === software ? current : [software];
       }
 
       if (current.includes(software)) {
@@ -290,10 +289,12 @@ const TlpPaymentsDashboard = () => {
     });
   };
 
-  const toggleSoftwareIssues = (software: string) => {
-    setExpandedSoftwareIssues((current) =>
-      current.includes(software) ? current.filter((value) => value !== software) : [...current, software],
-    );
+  const markHoldingTransferDone = (agentName: string) => {
+    setCompletedHoldingTransfers((current) => new Set(current).add(agentName));
+  };
+
+  const markThirdPartyAgentDone = (agentName: string) => {
+    setCompletedThirdPartyAgents((current) => new Set(current).add(agentName));
   };
 
   return (
@@ -442,48 +443,24 @@ const TlpPaymentsDashboard = () => {
                   {selectedGroups.map((group) => {
                     const difference = group.paymentFileTotal - group.balancingSheetTotal;
                     const matches = difference === 0;
-                    const isExpanded = expandedSoftwareIssues.includes(group.software);
 
                     return (
-                      <div key={group.software}>
-                        <div className="grid gap-3 px-4 py-4 lg:grid-cols-[minmax(180px,1.2fr)_minmax(180px,1fr)_minmax(180px,1fr)_minmax(180px,1fr)] lg:items-center">
-                          <span className="font-semibold text-foreground">{group.software}</span>
-                          <span className="text-sm text-foreground">
-                            <span className="mr-2 text-muted-foreground">Balancing Sheet:</span>
-                            <span className="tabular-nums">{formatCurrency(group.balancingSheetTotal)}</span>
-                          </span>
-                          <span className="text-sm text-foreground">
-                            <span className="mr-2 text-muted-foreground">Payment File:</span>
-                            <span className="tabular-nums">{formatCurrency(group.paymentFileTotal)}</span>
-                          </span>
-                          {matches ? (
-                            <span className="text-sm font-semibold text-status-success">✅ Match</span>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => toggleSoftwareIssues(group.software)}
-                              className="w-fit text-left text-sm font-semibold text-status-danger transition-opacity hover:opacity-80"
-                            >
-                              {`❌ Difference: ${formatCurrency(difference)}`}
-                            </button>
-                          )}
-                        </div>
-
-                        {!matches && isExpanded && group.issueSources && (
-                          <div className="border-t border-border bg-panel-alt/60 px-4 py-4 lg:pl-8">
-                            <div className="space-y-3">
-                              {group.issueSources.map((source) => (
-                                <div key={`${group.software}-${source.agent}-${source.file}`} className="grid gap-1 lg:grid-cols-[minmax(220px,1fr)_minmax(280px,1.2fr)] lg:items-start lg:gap-4">
-                                  <div className="space-y-1">
-                                    <p className="text-sm font-semibold text-foreground">{source.agent}</p>
-                                    <p className="text-xs text-muted-foreground">{source.file}</p>
-                                  </div>
-                                  <p className="text-sm text-muted-foreground">{source.detail}</p>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
+                      <div
+                        key={group.software}
+                        className="grid gap-3 px-4 py-4 lg:grid-cols-[minmax(180px,1.2fr)_minmax(180px,1fr)_minmax(180px,1fr)_minmax(180px,1fr)] lg:items-center"
+                      >
+                        <span className="font-semibold text-foreground">{group.software}</span>
+                        <span className="text-sm text-foreground">
+                          <span className="mr-2 text-muted-foreground">Balancing Sheet:</span>
+                          <span className="tabular-nums">{formatCurrency(group.balancingSheetTotal)}</span>
+                        </span>
+                        <span className="text-sm text-foreground">
+                          <span className="mr-2 text-muted-foreground">Payment File:</span>
+                          <span className="tabular-nums">{formatCurrency(group.paymentFileTotal)}</span>
+                        </span>
+                        <span className={`text-sm font-semibold ${matches ? "text-status-success" : "text-status-danger"}`}>
+                          {matches ? `✅ Match` : `❌ Difference: ${formatCurrency(difference)}`}
+                        </span>
                       </div>
                     );
                   })}
@@ -516,15 +493,65 @@ const TlpPaymentsDashboard = () => {
                 </div>
 
                 <div className="divide-y divide-border border-y border-border bg-panel">
-                  {holdingTransferAgents.map((agent) => (
+                  {activeHoldingTransfers.map((agent) => (
                     <div key={agent.agent} className="flex items-center justify-between gap-4 px-4 py-4">
-                      <span className="font-medium text-foreground">{agent.agent}</span>
-                      <span className="tabular-nums text-sm font-semibold text-foreground">
-                        {formatCurrency(agent.holdingTransfer)}
-                      </span>
+                      <div className="space-y-1">
+                        <span className="block font-semibold text-foreground">{agent.agent}</span>
+                        <span className="tabular-nums text-sm font-semibold text-foreground">
+                          {formatCurrency(agent.holdingTransfer)}
+                        </span>
+                      </div>
+                      <Button
+                        type="button"
+                        onClick={() => markHoldingTransferDone(agent.agent)}
+                        className="min-w-32"
+                      >
+                        <Check />
+                        Mark as Done
+                      </Button>
                     </div>
                   ))}
+
+                  {activeHoldingTransfers.length === 0 && (
+                    <div className="px-4 py-6 text-sm text-muted-foreground">No active holding account transfers remaining.</div>
+                  )}
                 </div>
+
+                <Collapsible open={holdingCompletedOpen} onOpenChange={setHoldingCompletedOpen} className="rounded-lg border border-border bg-panel">
+                  <CollapsibleTrigger className="flex w-full items-center justify-between gap-4 px-4 py-3 text-left">
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm font-semibold text-foreground">Completed ({completedHoldingTransferList.length})</span>
+                      <span className="inline-flex min-w-6 items-center justify-center rounded-full border border-border bg-panel-alt px-2 py-0.5 text-xs font-semibold text-muted-foreground">
+                        {completedHoldingTransferList.length}
+                      </span>
+                    </div>
+                    <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${holdingCompletedOpen ? "rotate-180" : ""}`} />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="border-t border-border">
+                    {completedHoldingTransferList.length > 0 ? (
+                      <div className="divide-y divide-border">
+                        {completedHoldingTransferList.map((agent) => (
+                          <div key={agent.agent} className="flex items-center justify-between gap-4 px-4 py-4 text-muted-foreground">
+                            <div className="space-y-1">
+                              <span className="block font-semibold text-muted-foreground">{agent.agent}</span>
+                              <span className="tabular-nums text-sm font-semibold">{formatCurrency(agent.holdingTransfer)}</span>
+                            </div>
+                            <Button
+                              type="button"
+                              disabled
+                              className="min-w-32 border border-status-success/20 bg-status-success-surface text-status-success-foreground hover:bg-status-success-surface"
+                            >
+                              <Check />
+                              Done
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="px-4 py-4 text-sm text-muted-foreground">No completed holding account transfers yet.</div>
+                    )}
+                  </CollapsibleContent>
+                </Collapsible>
               </div>
 
               <div className="space-y-3">
@@ -534,45 +561,109 @@ const TlpPaymentsDashboard = () => {
                 </div>
 
                 <div className="overflow-x-auto rounded-lg border border-border">
-                  <div className="min-w-[1120px]">
-                    <div className="grid grid-cols-[130px_minmax(220px,1.5fr)_120px_repeat(4,minmax(140px,1fr))] border-b border-border bg-panel px-4 py-3 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                  <div className="min-w-[1080px]">
+                    <div className="grid grid-cols-[130px_minmax(260px,1.7fr)_minmax(140px,1fr)_minmax(160px,1fr)_160px] border-b border-border bg-panel px-4 py-3 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
                       <span>Status</span>
                       <span>Agent</span>
-                      <span>Platform</span>
-                      <span>Holding Account Transfer</span>
-                      <span>CBO Total</span>
-                      <span>CBO Manual Payments</span>
-                      <span>Reconciliation Difference</span>
+                      <span>Total</span>
+                      <span>Manual Payments</span>
+                      <span className="text-right">Action</span>
                     </div>
 
-                    {sortedAgents.map((agent, index) => {
+                    {activeThirdPartyAgents.map((agent, index) => {
                       const meta = statusMeta[agent.status];
                       const tone = toneClasses[meta.tone];
-                      const hasReconDifference = agent.reconciliationDifference !== 0;
 
                       return (
                         <div
                           key={agent.agent}
-                          className={`grid grid-cols-[130px_minmax(220px,1.5fr)_120px_repeat(4,minmax(140px,1fr))] items-center border-b border-border px-4 py-4 text-sm ${index % 2 === 0 ? "bg-panel" : "bg-panel-alt/60"}`}
+                          className={`grid grid-cols-[130px_minmax(260px,1.7fr)_minmax(140px,1fr)_minmax(160px,1fr)_160px] items-center border-b border-border px-4 py-4 text-sm ${index % 2 === 0 ? "bg-panel" : "bg-panel-alt/60"}`}
                         >
                           <span className={`inline-flex w-fit items-center rounded-full border px-3 py-1 text-xs font-semibold ${tone.pill}`}>
                             {meta.label}
                           </span>
-                          <span className="font-semibold text-foreground">{agent.agent}</span>
-                          <span className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
-                            {agent.platform}
-                          </span>
-                          <span className="tabular-nums text-foreground">{formatCurrency(agent.holdingTransfer)}</span>
+                          <div className="space-y-1">
+                            <span className="block font-semibold text-foreground">{agent.agent}</span>
+                            <span className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                              {agent.platform}
+                            </span>
+                          </div>
                           <span className="tabular-nums text-foreground">{formatCurrency(agent.cboTotal)}</span>
                           <span className="tabular-nums text-foreground">{formatCurrency(agent.cboManualPayments)}</span>
-                          <span className={`tabular-nums font-semibold ${hasReconDifference ? "text-status-danger" : "text-status-success"}`}>
-                            {formatCurrency(agent.reconciliationDifference)}
-                          </span>
+                          <div className="flex justify-end">
+                            <Button
+                              type="button"
+                              onClick={() => markThirdPartyAgentDone(agent.agent)}
+                              className="min-w-32"
+                            >
+                              <Check />
+                              Mark as Done
+                            </Button>
+                          </div>
                         </div>
                       );
                     })}
+
+                    {activeThirdPartyAgents.length === 0 && (
+                      <div className="px-4 py-6 text-sm text-muted-foreground">No active third party agents remaining.</div>
+                    )}
                   </div>
                 </div>
+
+                <Collapsible open={thirdPartyCompletedOpen} onOpenChange={setThirdPartyCompletedOpen} className="rounded-lg border border-border bg-panel">
+                  <CollapsibleTrigger className="flex w-full items-center justify-between gap-4 px-4 py-3 text-left">
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm font-semibold text-foreground">Completed ({completedThirdPartyAgentList.length})</span>
+                      <span className="inline-flex min-w-6 items-center justify-center rounded-full border border-border bg-panel-alt px-2 py-0.5 text-xs font-semibold text-muted-foreground">
+                        {completedThirdPartyAgentList.length}
+                      </span>
+                    </div>
+                    <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${thirdPartyCompletedOpen ? "rotate-180" : ""}`} />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="border-t border-border">
+                    {completedThirdPartyAgentList.length > 0 ? (
+                      <div className="overflow-x-auto">
+                        <div className="min-w-[1080px] divide-y divide-border">
+                          {completedThirdPartyAgentList.map((agent) => {
+                            const meta = statusMeta[agent.status];
+                            const tone = toneClasses[meta.tone];
+
+                            return (
+                              <div
+                                key={agent.agent}
+                                className="grid grid-cols-[130px_minmax(260px,1.7fr)_minmax(140px,1fr)_minmax(160px,1fr)_160px] items-center px-4 py-4 text-sm text-muted-foreground"
+                              >
+                                <span className={`inline-flex w-fit items-center rounded-full border px-3 py-1 text-xs font-semibold opacity-70 ${tone.pill}`}>
+                                  {meta.label}
+                                </span>
+                                <div className="space-y-1">
+                                  <span className="block font-semibold text-muted-foreground">{agent.agent}</span>
+                                  <span className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                                    {agent.platform}
+                                  </span>
+                                </div>
+                                <span className="tabular-nums">{formatCurrency(agent.cboTotal)}</span>
+                                <span className="tabular-nums">{formatCurrency(agent.cboManualPayments)}</span>
+                                <div className="flex justify-end">
+                                  <Button
+                                    type="button"
+                                    disabled
+                                    className="min-w-32 border border-status-success/20 bg-status-success-surface text-status-success-foreground hover:bg-status-success-surface"
+                                  >
+                                    <Check />
+                                    Done
+                                  </Button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="px-4 py-4 text-sm text-muted-foreground">No completed third party agents yet.</div>
+                    )}
+                  </CollapsibleContent>
+                </Collapsible>
               </div>
             </section>
           </TabsContent>
