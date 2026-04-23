@@ -283,7 +283,13 @@ const TlpPaymentsDashboard = () => {
   };
 
   const markHoldingTransferDone = (agentName: string) => {
-    setCompletedHoldingTransfers((current) => new Set(current).add(agentName));
+    console.log("Holding transfer marked done", {
+      agentName,
+      exactMatch: holdingTransferAgents.some((agent) => agent.agent === agentName),
+      availableAgents: holdingTransferAgents.map((agent) => agent.agent),
+    });
+
+    setCompletedHoldingTransfers((prev) => new Set([...prev, agentName]));
   };
 
   const markThirdPartyAgentDone = (agentName: string) => {
