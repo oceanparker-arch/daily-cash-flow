@@ -277,7 +277,7 @@ const TlpPaymentsDashboard = () => {
         return current.filter((item) => item !== platform);
       }
 
-      return [...current, software].sort(
+      return [...current, platform].sort(
         (a, b) =>
           softwareGroups.findIndex((g) => g.software === a) -
           softwareGroups.findIndex((g) => g.software === b),
@@ -304,44 +304,78 @@ const TlpPaymentsDashboard = () => {
   return (
     <main className="min-h-screen bg-app">
       <div className="mx-auto flex w-full max-w-[1680px] flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
-        <div className="sticky top-0 z-20 space-y-4 bg-app pb-2">
-          <header className="rounded-lg border border-border bg-header text-header-foreground shadow-sm">
-            <div className="flex flex-col gap-4 px-5 py-4 lg:flex-row lg:items-center lg:justify-between lg:px-6">
-              <div className="space-y-1">
-                <h1 className="text-2xl font-semibold tracking-tight">TLP Daily Payments Dashboard</h1>
-                <div className="flex flex-col gap-1 text-sm text-header-foreground/80 sm:flex-row sm:gap-6">
-                  <span>Today: {todayLabel}</span>
-                  <span>Last refreshed: {lastRefreshLabel}</span>
-                </div>
-              </div>
-
-              <Button variant="toolbar" className="min-w-32 bg-panel text-foreground hover:-translate-y-0.5">
-                <RefreshCw className="motion-safe:group-hover:animate-spin-slow" />
-                Refresh
-              </Button>
-            </div>
-          </header>
-
-          <section
-            aria-label="Overall run status"
-            className={`rounded-lg border px-5 py-4 shadow-sm ${toneClasses[overallStatus.tone].banner}`}
-          >
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-              <div className="flex items-center gap-3">
-                <span
-                  className={`h-3.5 w-3.5 rounded-full ${toneClasses[overallStatus.tone].dot} ${overallStatus.tone !== "success" ? "motion-safe:animate-soft-pulse" : ""}`}
-                />
-                <div>
-                  <p className="text-lg font-semibold">{overallStatus.label}</p>
-                  <p className="text-sm opacity-90">{overallStatus.summary}</p>
-                </div>
-              </div>
-            </div>
-          </section>
-        </div>
-
         <Tabs defaultValue="issues" className="space-y-6 pb-4">
-          <TabsList className="h-auto w-full justify-start gap-2 rounded-lg border border-border bg-panel p-2">
+          <div className="sticky top-0 z-20 space-y-4 bg-app pb-2">
+            <header className="rounded-lg border border-border bg-header text-header-foreground shadow-sm">
+              <div className="flex flex-col gap-4 px-5 py-4 lg:flex-row lg:items-center lg:justify-between lg:px-6">
+                <div className="space-y-1">
+                  <h1 className="text-2xl font-semibold tracking-tight">TLP Daily Payments Dashboard</h1>
+                  <div className="flex flex-col gap-1 text-sm text-header-foreground/80 sm:flex-row sm:gap-6">
+                    <span>Today: {todayLabel}</span>
+                    <span>Last refreshed: {lastRefreshLabel}</span>
+                  </div>
+                </div>
+
+                <Button variant="toolbar" className="min-w-32 bg-panel text-foreground hover:-translate-y-0.5">
+                  <RefreshCw className="motion-safe:group-hover:animate-spin-slow" />
+                  Refresh
+                </Button>
+              </div>
+            </header>
+
+            <section
+              aria-label="Overall run status"
+              className={`rounded-lg border px-5 py-4 shadow-sm ${toneClasses[overallStatus.tone].banner}`}
+            >
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div className="flex items-center gap-3">
+                  <span
+                    className={`h-3.5 w-3.5 rounded-full ${toneClasses[overallStatus.tone].dot} ${overallStatus.tone !== "success" ? "motion-safe:animate-soft-pulse" : ""}`}
+                  />
+                  <div>
+                    <p className="text-lg font-semibold">{overallStatus.label}</p>
+                    <p className="text-sm opacity-90">{overallStatus.summary}</p>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section className="rounded-lg border border-border bg-panel px-4 py-3 shadow-sm">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:gap-3">
+                  <span className="text-sm font-medium text-muted-foreground">Platforms:</span>
+                  <div className="flex flex-wrap gap-2">
+                    {softwareGroups.map((group) => {
+                      const selected = selectedPlatforms.includes(group.software);
+
+                      return (
+                        <Toggle
+                          key={group.software}
+                          pressed={selected}
+                          onPressedChange={() => togglePlatform(group.software)}
+                          variant={selected ? "default" : "outline"}
+                          className={selected ? "bg-header text-header-foreground hover:bg-header" : "text-muted-foreground"}
+                        >
+                          {group.software}
+                        </Toggle>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 self-end lg:self-auto">
+                  <button type="button" onClick={selectAllPlatforms} className="text-sm font-medium text-muted-foreground hover:text-foreground">
+                    Select all
+                  </button>
+                  <span className="text-muted-foreground">/</span>
+                  <button type="button" onClick={clearPlatforms} className="text-sm font-medium text-muted-foreground hover:text-foreground">
+                    Clear
+                  </button>
+                </div>
+              </div>
+            </section>
+
+            <TabsList className="h-auto w-full justify-start gap-2 rounded-lg border border-border bg-panel p-2">
             <TabsTrigger value="issues" className="gap-2 rounded-md px-4 py-2">
               <span>Issues</span>
               {hasIssues && (
@@ -356,7 +390,8 @@ const TlpPaymentsDashboard = () => {
             <TabsTrigger value="manual-bank-payments" className="rounded-md px-4 py-2">
               Manual Bank Payments
             </TabsTrigger>
-          </TabsList>
+            </TabsList>
+          </div>
 
           <TabsContent value="issues" className="mt-0">
             <section aria-labelledby="issues-heading" className="space-y-4">
@@ -410,24 +445,6 @@ const TlpPaymentsDashboard = () => {
                 <p className="text-sm text-muted-foreground">
                   Combined totals and file-to-sheet comparisons across selected software groups.
                 </p>
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                {softwareGroups.map((group) => {
-                  const selected = selectedSoftware.includes(group.software);
-
-                  return (
-                    <Toggle
-                      key={group.software}
-                      pressed={selected}
-                      onPressedChange={() => toggleSoftwareGroup(group.software)}
-                      variant={selected ? "default" : "outline"}
-                      className={selected ? "bg-header text-header-foreground hover:bg-header" : "text-muted-foreground"}
-                    >
-                      {group.software}
-                    </Toggle>
-                  );
-                })}
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">
@@ -568,24 +585,6 @@ const TlpPaymentsDashboard = () => {
                 <div>
                   <h3 className="text-base font-semibold text-foreground">Third Party Agents</h3>
                   <p className="text-sm text-muted-foreground">Issue and warning rows are surfaced first for rapid review.</p>
-                </div>
-
-                <div className="flex flex-wrap gap-2">
-                  {softwareGroups.map((group) => {
-                    const selected = selectedThirdPartySoftware.includes(group.software);
-
-                    return (
-                      <Toggle
-                        key={`third-party-${group.software}`}
-                        pressed={selected}
-                        onPressedChange={() => toggleThirdPartySoftwareGroup(group.software)}
-                        variant={selected ? "default" : "outline"}
-                        className={selected ? "bg-header text-header-foreground hover:bg-header" : "text-muted-foreground"}
-                      >
-                        {group.software}
-                      </Toggle>
-                    );
-                  })}
                 </div>
 
                 <div className="overflow-x-auto rounded-lg border border-border">
