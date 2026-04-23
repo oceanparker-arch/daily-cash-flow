@@ -22,14 +22,6 @@ type IssueFlag = {
   detail: string;
 };
 
-type BatchAgent = {
-  agent: string;
-  holdingTransfer: number;
-  cboTotal: number;
-  cboManualPayments: number;
-  reconciliationDifference: number;
-};
-
 type ThirdPartyAgent = {
   agent: string;
   platform: string;
