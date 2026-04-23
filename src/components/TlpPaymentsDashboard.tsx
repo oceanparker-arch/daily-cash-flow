@@ -133,36 +133,9 @@ const lastRefreshLabel = new Intl.DateTimeFormat("en-GB", {
   minute: "2-digit",
 }).format(new Date());
 
-const sortedFlags = [...issueFlags].sort(
-  (a, b) => severityOrder[a.severity] - severityOrder[b.severity] || a.agent.localeCompare(b.agent),
-);
-
 const sortedAgents = [...thirdPartyAgents].sort(
   (a, b) => statusOrder[a.status] - statusOrder[b.status] || a.agent.localeCompare(b.agent),
 );
-
-const issueCounts = {
-  issues: sortedFlags.length,
-  agents: new Set(sortedFlags.map((flag) => flag.agent)).size,
-};
-
-const overallStatus = sortedFlags.some((flag) => flag.severity === "danger")
-  ? {
-      tone: "danger" as const,
-      label: "Action Required",
-      summary: `${issueCounts.issues} issues found across ${issueCounts.agents} agents`,
-    }
-  : sortedFlags.length > 0
-    ? {
-        tone: "warning" as const,
-        label: "Attention Required",
-        summary: `${issueCounts.issues} issues found across ${issueCounts.agents} agents`,
-      }
-    : {
-        tone: "success" as const,
-        label: "All Clear",
-        summary: "All files present, all totals match, no reconciliation differences",
-      };
 
 const toneClasses = {
   success: {
@@ -199,17 +172,55 @@ const SummaryMetric = ({ label, value }: { label: string; value: number }) => (
 );
 
 const TlpPaymentsDashboard = () => {
-  const hasIssues = sortedFlags.length > 0;
-  const defaultSelectedSoftware = softwareGroups.map((group) => group.software);
-  const [selectedSoftware, setSelectedSoftware] = useState<string[]>(defaultSelectedSoftware);
-  const [selectedThirdPartySoftware, setSelectedThirdPartySoftware] = useState<string[]>(defaultSelectedSoftware);
+  const allPlatforms = softwareGroups.map((group) => group.software);
+  const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>(allPlatforms);
   const [completedHoldingTransfers, setCompletedHoldingTransfers] = useState<Set<string>>(new Set());
   const [completedThirdPartyAgents, setCompletedThirdPartyAgents] = useState<Set<string>>(new Set());
   const [holdingCompletedOpen, setHoldingCompletedOpen] = useState(false);
   const [thirdPartyCompletedOpen, setThirdPartyCompletedOpen] = useState(false);
 
+  const sortedFlags = useMemo(
+    () =>
+      [...issueFlags]
+        .filter((flag) => selectedPlatforms.some((platform) => platform.toUpperCase() === flag.platform.toUpperCase()))
+        .sort((a, b) => severityOrder[a.severity] - severityOrder[b.severity] || a.agent.localeCompare(b.agent)),
+    [selectedPlatforms],
+  );
+
+  const hasIssues = sortedFlags.length > 0;
+
+  const issueCounts = useMemo(
+    () => ({
+      issues: sortedFlags.length,
+      agents: new Set(sortedFlags.map((flag) => flag.agent)).size,
+    }),
+    [sortedFlags],
+  );
+
+  const overallStatus = useMemo(
+    () =>
+      sortedFlags.some((flag) => flag.severity === "danger")
+        ? {
+            tone: "danger" as const,
+            label: "Action Required",
+            summary: `${issueCounts.issues} issues found across ${issueCounts.agents} agents`,
+          }
+        : sortedFlags.length > 0
+          ? {
+              tone: "warning" as const,
+              label: "Attention Required",
+              summary: `${issueCounts.issues} issues found across ${issueCounts.agents} agents`,
+            }
+          : {
+              tone: "success" as const,
+              label: "All Clear",
+              summary: "All files present, all totals match, no reconciliation differences",
+            },
+    [issueCounts.agents, issueCounts.issues, sortedFlags],
+  );
+
   const selectedGroups = useMemo(() => {
-    const filtered = softwareGroups.filter((group) => selectedSoftware.includes(group.software));
+    const filtered = softwareGroups.filter((group) => selectedPlatforms.includes(group.software));
 
     return [...filtered].sort((a, b) => {
       const aMismatch = a.balancingSheetTotal !== a.paymentFileTotal ? 0 : 1;
@@ -217,7 +228,7 @@ const TlpPaymentsDashboard = () => {
 
       return aMismatch - bMismatch || a.software.localeCompare(b.software);
     });
-  }, [selectedSoftware]);
+  }, [selectedPlatforms]);
 
   const softwareSummary = selectedGroups.reduce(
     (totals, group) => ({
@@ -230,41 +241,40 @@ const TlpPaymentsDashboard = () => {
   const activeHoldingTransfers = useMemo(
     () =>
       holdingTransferAgents.filter(
-        (agent) =>
-          !completedHoldingTransfers.has(agent.agent) && selectedThirdPartySoftware.includes(agent.platform),
+        (agent) => !completedHoldingTransfers.has(agent.agent) && selectedPlatforms.includes(agent.platform),
       ),
-    [completedHoldingTransfers, selectedThirdPartySoftware],
+    [completedHoldingTransfers, selectedPlatforms],
   );
 
   const completedHoldingTransferList = useMemo(
     () =>
       holdingTransferAgents.filter(
-        (agent) => completedHoldingTransfers.has(agent.agent) && selectedThirdPartySoftware.includes(agent.platform),
+        (agent) => completedHoldingTransfers.has(agent.agent) && selectedPlatforms.includes(agent.platform),
       ),
-    [completedHoldingTransfers, selectedThirdPartySoftware],
+    [completedHoldingTransfers, selectedPlatforms],
   );
 
   const activeThirdPartyAgents = useMemo(
     () =>
       sortedAgents.filter(
-        (agent) => !completedThirdPartyAgents.has(agent.agent) && selectedThirdPartySoftware.includes(agent.platform),
+        (agent) => !completedThirdPartyAgents.has(agent.agent) && selectedPlatforms.includes(agent.platform),
       ),
-    [completedThirdPartyAgents, selectedThirdPartySoftware],
+    [completedThirdPartyAgents, selectedPlatforms],
   );
 
   const completedThirdPartyAgentList = useMemo(
     () =>
       sortedAgents.filter(
-        (agent) => completedThirdPartyAgents.has(agent.agent) && selectedThirdPartySoftware.includes(agent.platform),
+        (agent) => completedThirdPartyAgents.has(agent.agent) && selectedPlatforms.includes(agent.platform),
       ),
-    [completedThirdPartyAgents, selectedThirdPartySoftware],
+    [completedThirdPartyAgents, selectedPlatforms],
   );
 
-  const toggleSoftwareGroup = (software: string) => {
-    setSelectedSoftware((current) => {
-      if (current.includes(software)) {
+  const togglePlatform = (platform: string) => {
+    setSelectedPlatforms((current) => {
+      if (current.includes(platform)) {
         if (current.length === 1) return current;
-        return current.filter((s) => s !== software);
+        return current.filter((item) => item !== platform);
       }
 
       return [...current, software].sort(
@@ -275,20 +285,13 @@ const TlpPaymentsDashboard = () => {
     });
   };
 
-  const toggleThirdPartySoftwareGroup = (software: string) => {
-    setSelectedThirdPartySoftware((current) => {
-      if (current.includes(software)) {
-        if (current.length === 1) return current;
-        return current.filter((s) => s !== software);
-      }
+  const selectAllPlatforms = () => setSelectedPlatforms(allPlatforms);
 
-      return [...current, software].sort(
-        (a, b) =>
-          softwareGroups.findIndex((g) => g.software === a) -
-          softwareGroups.findIndex((g) => g.software === b),
-      );
+  const clearPlatforms = () =>
+    setSelectedPlatforms((current) => {
+      if (current.length === 1) return current;
+      return [current[0]];
     });
-  };
 
   const markHoldingTransferDone = (agentName: string) => {
     setCompletedHoldingTransfers((prev) => new Set([...prev, agentName]));
