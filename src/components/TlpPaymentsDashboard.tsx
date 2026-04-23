@@ -345,7 +345,7 @@ const TlpPaymentsDashboard = () => {
                           pressed={selected}
                           onPressedChange={() => togglePlatform(group.software)}
                           variant={selected ? "default" : "outline"}
-                          className={selected ? "bg-header text-header-foreground hover:bg-header" : "text-muted-foreground"}
+                          className={selected ? undefined : "text-muted-foreground"}
                         >
                           {group.software}
                         </Toggle>
