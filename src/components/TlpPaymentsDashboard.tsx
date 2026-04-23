@@ -43,6 +43,7 @@ type SoftwareGroup = {
 type HoldingTransferAgent = {
   agent: string;
   holdingTransfer: number;
+  platform: string;
 };
 
 const issueFlags: IssueFlag[] = [
@@ -102,11 +103,11 @@ const softwareGroups: SoftwareGroup[] = [
 ];
 
 const holdingTransferAgents: HoldingTransferAgent[] = [
-  { agent: "Bridgewater Client Funds", holdingTransfer: 18420 },
-  { agent: "Evergreen Deposits", holdingTransfer: 22675 },
-  { agent: "Lansdowne Holdings", holdingTransfer: 17340 },
-  { agent: "Pioneer Trust Accounts", holdingTransfer: 20980 },
-  { agent: "Summit Escrow Services", holdingTransfer: 19465 },
+  { agent: "Bridgewater Client Funds", holdingTransfer: 18420, platform: "Alto" },
+  { agent: "Evergreen Deposits", holdingTransfer: 22675, platform: "Street" },
+  { agent: "Lansdowne Holdings", holdingTransfer: 17340, platform: "Jupix" },
+  { agent: "Pioneer Trust Accounts", holdingTransfer: 20980, platform: "Reapit" },
+  { agent: "Summit Escrow Services", holdingTransfer: 19465, platform: "10Ninety" },
 ];
 
 const severityOrder: Record<IssueSeverity, number> = { danger: 0, warning: 1 };
@@ -227,13 +228,20 @@ const TlpPaymentsDashboard = () => {
   );
 
   const activeHoldingTransfers = useMemo(
-    () => holdingTransferAgents.filter((agent) => !completedHoldingTransfers.has(agent.agent)),
-    [completedHoldingTransfers],
+    () =>
+      holdingTransferAgents.filter(
+        (agent) =>
+          !completedHoldingTransfers.has(agent.agent) && selectedThirdPartySoftware.includes(agent.platform),
+      ),
+    [completedHoldingTransfers, selectedThirdPartySoftware],
   );
 
   const completedHoldingTransferList = useMemo(
-    () => holdingTransferAgents.filter((agent) => completedHoldingTransfers.has(agent.agent)),
-    [completedHoldingTransfers],
+    () =>
+      holdingTransferAgents.filter(
+        (agent) => completedHoldingTransfers.has(agent.agent) && selectedThirdPartySoftware.includes(agent.platform),
+      ),
+    [completedHoldingTransfers, selectedThirdPartySoftware],
   );
 
   const activeThirdPartyAgents = useMemo(
@@ -283,12 +291,6 @@ const TlpPaymentsDashboard = () => {
   };
 
   const markHoldingTransferDone = (agentName: string) => {
-    console.log("Holding transfer marked done", {
-      agentName,
-      exactMatch: holdingTransferAgents.some((agent) => agent.agent === agentName),
-      availableAgents: holdingTransferAgents.map((agent) => agent.agent),
-    });
-
     setCompletedHoldingTransfers((prev) => new Set([...prev, agentName]));
   };
 
@@ -494,7 +496,12 @@ const TlpPaymentsDashboard = () => {
                 <div className="divide-y divide-border border-y border-border bg-panel">
                   {activeHoldingTransfers.map((agent) => (
                     <div key={agent.agent} className="grid grid-cols-[1fr_auto_auto] items-center gap-4 px-4 py-4">
-                      <span className="font-semibold text-foreground">{agent.agent}</span>
+                      <div className="flex min-w-0 items-center gap-3">
+                        <span className="truncate font-semibold text-foreground">{agent.agent}</span>
+                        <span className="inline-flex items-center rounded-full border border-border bg-panel-alt px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                          {agent.platform}
+                        </span>
+                      </div>
                       <span className="tabular-nums text-sm font-semibold text-foreground">
                         {formatCurrency(agent.holdingTransfer)}
                       </span>
@@ -529,7 +536,12 @@ const TlpPaymentsDashboard = () => {
                       <div className="divide-y divide-border">
                         {completedHoldingTransferList.map((agent) => (
                           <div key={agent.agent} className="grid grid-cols-[1fr_auto_auto] items-center gap-4 px-4 py-4 text-muted-foreground">
-                            <span className="font-semibold text-muted-foreground">{agent.agent}</span>
+                            <div className="flex min-w-0 items-center gap-3">
+                              <span className="truncate font-semibold text-muted-foreground">{agent.agent}</span>
+                              <span className="inline-flex items-center rounded-full border border-border bg-panel-alt px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                                {agent.platform}
+                              </span>
+                            </div>
                             <span className="tabular-nums text-sm font-semibold">{formatCurrency(agent.holdingTransfer)}</span>
                             <Button
                               type="button"
