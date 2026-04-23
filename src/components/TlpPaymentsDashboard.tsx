@@ -32,7 +32,7 @@ type BatchAgent = {
 
 type ThirdPartyAgent = {
   agent: string;
-  platform: "ALTO" | "STREET";
+  platform: string;
   holdingTransfer: number;
   cboTotal: number;
   cboManualPayments: number;
@@ -84,25 +84,17 @@ const issueFlags: IssueFlag[] = [
   },
 ];
 
-const batchAgents: BatchAgent[] = [
-  { agent: "Batch Alpha", holdingTransfer: 18450, cboTotal: 17200, cboManualPayments: 1250, reconciliationDifference: 0 },
-  { agent: "Batch Bravo", holdingTransfer: 22340, cboTotal: 21090, cboManualPayments: 1250, reconciliationDifference: 0 },
-  { agent: "Batch Charlie", holdingTransfer: 19890, cboTotal: 18940, cboManualPayments: 950, reconciliationDifference: 0 },
-  { agent: "Batch Delta", holdingTransfer: 24075, cboTotal: 22975, cboManualPayments: 1100, reconciliationDifference: 0 },
-  { agent: "Batch Echo", holdingTransfer: 21110, cboTotal: 20010, cboManualPayments: 1100, reconciliationDifference: 0 },
-];
-
 const thirdPartyAgents: ThirdPartyAgent[] = [
-  { agent: "Kingsley Finance", platform: "ALTO", holdingTransfer: 0, cboTotal: 0, cboManualPayments: 0, reconciliationDifference: 0, status: "issue" },
-  { agent: "Harbour & Co", platform: "STREET", holdingTransfer: 12450, cboTotal: 12200, cboManualPayments: 0, reconciliationDifference: 250, status: "issue" },
-  { agent: "Cedar Residential", platform: "ALTO", holdingTransfer: 9135, cboTotal: 9135, cboManualPayments: 0, reconciliationDifference: 0, status: "warning" },
-  { agent: "Northpoint Estates", platform: "STREET", holdingTransfer: 17680, cboTotal: 17430, cboManualPayments: 0, reconciliationDifference: -250, status: "warning" },
-  { agent: "Bromley Lettings", platform: "ALTO", holdingTransfer: 14320, cboTotal: 14320, cboManualPayments: 0, reconciliationDifference: 0, status: "ok" },
-  { agent: "Meridian Block Mgmt", platform: "STREET", holdingTransfer: 20875, cboTotal: 20225, cboManualPayments: 650, reconciliationDifference: 0, status: "ok" },
-  { agent: "Oakwell Property", platform: "ALTO", holdingTransfer: 11640, cboTotal: 11240, cboManualPayments: 400, reconciliationDifference: 0, status: "ok" },
-  { agent: "Redbridge Living", platform: "STREET", holdingTransfer: 15890, cboTotal: 15890, cboManualPayments: 0, reconciliationDifference: 0, status: "ok" },
-  { agent: "Sterling Homes", platform: "ALTO", holdingTransfer: 13260, cboTotal: 12960, cboManualPayments: 300, reconciliationDifference: 0, status: "ok" },
-  { agent: "Westcourt Management", platform: "STREET", holdingTransfer: 18710, cboTotal: 18010, cboManualPayments: 700, reconciliationDifference: 0, status: "ok" },
+  { agent: "Kingsley Finance", platform: "Alto", holdingTransfer: 0, cboTotal: 0, cboManualPayments: 0, reconciliationDifference: 0, status: "issue" },
+  { agent: "Harbour & Co", platform: "Street", holdingTransfer: 12450, cboTotal: 12200, cboManualPayments: 0, reconciliationDifference: 250, status: "issue" },
+  { agent: "Cedar Residential", platform: "Jupix", holdingTransfer: 9135, cboTotal: 9135, cboManualPayments: 0, reconciliationDifference: 0, status: "warning" },
+  { agent: "Northpoint Estates", platform: "SME", holdingTransfer: 17680, cboTotal: 17430, cboManualPayments: 0, reconciliationDifference: -250, status: "warning" },
+  { agent: "Bromley Lettings", platform: "10Ninety", holdingTransfer: 14320, cboTotal: 14320, cboManualPayments: 0, reconciliationDifference: 0, status: "ok" },
+  { agent: "Meridian Block Mgmt", platform: "Acquaint", holdingTransfer: 20875, cboTotal: 20225, cboManualPayments: 650, reconciliationDifference: 0, status: "ok" },
+  { agent: "Oakwell Property", platform: "Genie", holdingTransfer: 11640, cboTotal: 11240, cboManualPayments: 400, reconciliationDifference: 0, status: "ok" },
+  { agent: "Redbridge Living", platform: "Veco", holdingTransfer: 15890, cboTotal: 15890, cboManualPayments: 0, reconciliationDifference: 0, status: "ok" },
+  { agent: "Sterling Homes", platform: "Reapit", holdingTransfer: 13260, cboTotal: 12960, cboManualPayments: 300, reconciliationDifference: 0, status: "ok" },
+  { agent: "Westcourt Management", platform: "Street", holdingTransfer: 18710, cboTotal: 18010, cboManualPayments: 700, reconciliationDifference: 0, status: "ok" },
 ];
 
 const softwareGroups: SoftwareGroup[] = [
@@ -147,16 +139,6 @@ const lastRefreshLabel = new Intl.DateTimeFormat("en-GB", {
   hour: "2-digit",
   minute: "2-digit",
 }).format(new Date());
-
-const batchSummary = batchAgents.reduce(
-  (totals, agent) => ({
-    holdingTransfer: totals.holdingTransfer + agent.holdingTransfer,
-    cboTotal: totals.cboTotal + agent.cboTotal,
-    cboManualPayments: totals.cboManualPayments + agent.cboManualPayments,
-    reconciliationDifference: totals.reconciliationDifference + agent.reconciliationDifference,
-  }),
-  { holdingTransfer: 0, cboTotal: 0, cboManualPayments: 0, reconciliationDifference: 0 },
-);
 
 const sortedFlags = [...issueFlags].sort(
   (a, b) => severityOrder[a.severity] - severityOrder[b.severity] || a.agent.localeCompare(b.agent),
@@ -227,6 +209,7 @@ const TlpPaymentsDashboard = () => {
   const hasIssues = sortedFlags.length > 0;
   const defaultSelectedSoftware = softwareGroups.map((group) => group.software);
   const [selectedSoftware, setSelectedSoftware] = useState<string[]>(defaultSelectedSoftware);
+  const [selectedThirdPartySoftware, setSelectedThirdPartySoftware] = useState<string[]>(defaultSelectedSoftware);
   const [completedHoldingTransfers, setCompletedHoldingTransfers] = useState<Set<string>>(new Set());
   const [completedThirdPartyAgents, setCompletedThirdPartyAgents] = useState<Set<string>>(new Set());
   const [holdingCompletedOpen, setHoldingCompletedOpen] = useState(false);
@@ -262,29 +245,47 @@ const TlpPaymentsDashboard = () => {
   );
 
   const activeThirdPartyAgents = useMemo(
-    () => sortedAgents.filter((agent) => !completedThirdPartyAgents.has(agent.agent)),
-    [completedThirdPartyAgents],
+    () =>
+      sortedAgents.filter(
+        (agent) => !completedThirdPartyAgents.has(agent.agent) && selectedThirdPartySoftware.includes(agent.platform),
+      ),
+    [completedThirdPartyAgents, selectedThirdPartySoftware],
   );
 
   const completedThirdPartyAgentList = useMemo(
-    () => sortedAgents.filter((agent) => completedThirdPartyAgents.has(agent.agent)),
-    [completedThirdPartyAgents],
+    () =>
+      sortedAgents.filter(
+        (agent) => completedThirdPartyAgents.has(agent.agent) && selectedThirdPartySoftware.includes(agent.platform),
+      ),
+    [completedThirdPartyAgents, selectedThirdPartySoftware],
   );
 
-  const toggleSoftwareGroup = (software: string, pressed: boolean) => {
+  const toggleSoftwareGroup = (software: string) => {
     setSelectedSoftware((current) => {
-      if (!pressed) {
-        return current.length === 1 && current[0] === software ? current : [software];
-      }
-
       if (current.includes(software)) {
-        return current;
+        if (current.length === 1) return current;
+        return current.filter((s) => s !== software);
       }
 
       return [...current, software].sort(
         (a, b) =>
-          softwareGroups.findIndex((group) => group.software === a) -
-          softwareGroups.findIndex((group) => group.software === b),
+          softwareGroups.findIndex((g) => g.software === a) -
+          softwareGroups.findIndex((g) => g.software === b),
+      );
+    });
+  };
+
+  const toggleThirdPartySoftwareGroup = (software: string) => {
+    setSelectedThirdPartySoftware((current) => {
+      if (current.includes(software)) {
+        if (current.length === 1) return current;
+        return current.filter((s) => s !== software);
+      }
+
+      return [...current, software].sort(
+        (a, b) =>
+          softwareGroups.findIndex((g) => g.software === a) -
+          softwareGroups.findIndex((g) => g.software === b),
       );
     });
   };
@@ -416,7 +417,7 @@ const TlpPaymentsDashboard = () => {
                     <Toggle
                       key={group.software}
                       pressed={selected}
-                      onPressedChange={(pressed) => toggleSoftwareGroup(group.software, pressed)}
+                      onPressedChange={() => toggleSoftwareGroup(group.software)}
                       variant={selected ? "default" : "outline"}
                       className={selected ? "bg-header text-header-foreground hover:bg-header" : "text-muted-foreground"}
                     >
@@ -427,8 +428,8 @@ const TlpPaymentsDashboard = () => {
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">
-                <SummaryMetric label="CBO Total (£)" value={softwareSummary.cboTotal} />
-                <SummaryMetric label="CBO Manual Payments (£)" value={softwareSummary.cboManualPayments} />
+                <SummaryMetric label="Total (£)" value={softwareSummary.cboTotal} />
+                <SummaryMetric label="Manual Payments (£)" value={softwareSummary.cboManualPayments} />
               </div>
 
               <div className="border-t border-border pt-6">
@@ -494,13 +495,11 @@ const TlpPaymentsDashboard = () => {
 
                 <div className="divide-y divide-border border-y border-border bg-panel">
                   {activeHoldingTransfers.map((agent) => (
-                    <div key={agent.agent} className="flex items-center justify-between gap-4 px-4 py-4">
-                      <div className="space-y-1">
-                        <span className="block font-semibold text-foreground">{agent.agent}</span>
-                        <span className="tabular-nums text-sm font-semibold text-foreground">
-                          {formatCurrency(agent.holdingTransfer)}
-                        </span>
-                      </div>
+                    <div key={agent.agent} className="grid grid-cols-[1fr_auto_auto] items-center gap-4 px-4 py-4">
+                      <span className="font-semibold text-foreground">{agent.agent}</span>
+                      <span className="tabular-nums text-sm font-semibold text-foreground">
+                        {formatCurrency(agent.holdingTransfer)}
+                      </span>
                       <Button
                         type="button"
                         onClick={() => markHoldingTransferDone(agent.agent)}
@@ -531,11 +530,9 @@ const TlpPaymentsDashboard = () => {
                     {completedHoldingTransferList.length > 0 ? (
                       <div className="divide-y divide-border">
                         {completedHoldingTransferList.map((agent) => (
-                          <div key={agent.agent} className="flex items-center justify-between gap-4 px-4 py-4 text-muted-foreground">
-                            <div className="space-y-1">
-                              <span className="block font-semibold text-muted-foreground">{agent.agent}</span>
-                              <span className="tabular-nums text-sm font-semibold">{formatCurrency(agent.holdingTransfer)}</span>
-                            </div>
+                          <div key={agent.agent} className="grid grid-cols-[1fr_auto_auto] items-center gap-4 px-4 py-4 text-muted-foreground">
+                            <span className="font-semibold text-muted-foreground">{agent.agent}</span>
+                            <span className="tabular-nums text-sm font-semibold">{formatCurrency(agent.holdingTransfer)}</span>
                             <Button
                               type="button"
                               disabled
@@ -558,6 +555,24 @@ const TlpPaymentsDashboard = () => {
                 <div>
                   <h3 className="text-base font-semibold text-foreground">Third Party Agents</h3>
                   <p className="text-sm text-muted-foreground">Issue and warning rows are surfaced first for rapid review.</p>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  {softwareGroups.map((group) => {
+                    const selected = selectedThirdPartySoftware.includes(group.software);
+
+                    return (
+                      <Toggle
+                        key={`third-party-${group.software}`}
+                        pressed={selected}
+                        onPressedChange={() => toggleThirdPartySoftwareGroup(group.software)}
+                        variant={selected ? "default" : "outline"}
+                        className={selected ? "bg-header text-header-foreground hover:bg-header" : "text-muted-foreground"}
+                      >
+                        {group.software}
+                      </Toggle>
+                    );
+                  })}
                 </div>
 
                 <div className="overflow-x-auto rounded-lg border border-border">
@@ -672,7 +687,5 @@ const TlpPaymentsDashboard = () => {
     </main>
   );
 };
-
-void batchSummary;
 
 export default TlpPaymentsDashboard;
