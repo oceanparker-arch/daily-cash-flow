@@ -297,6 +297,58 @@ const TlpPaymentsDashboard = () => {
     [completedThirdPartyAgents, selectedPlatforms],
   );
 
+  const outstandingBatch = useMemo(
+    () =>
+      softwareGroups.filter(
+        (g) =>
+          selectedPlatforms.includes(g.software) &&
+          !completedBatchGroups.has(g.software) &&
+          (g.balancingSheetTotal > 0 || g.hasPaymentFile),
+      ),
+    [selectedPlatforms, completedBatchGroups],
+  );
+
+  const paidBatch = useMemo(
+    () =>
+      softwareGroups.filter(
+        (g) =>
+          selectedPlatforms.includes(g.software) &&
+          completedBatchGroups.has(g.software) &&
+          (g.balancingSheetTotal > 0 || g.hasPaymentFile),
+      ),
+    [selectedPlatforms, completedBatchGroups],
+  );
+
+  const outstandingHolding = activeHoldingTransfers;
+  const paidHolding = completedHoldingTransferList;
+  const outstandingThirdParty = activeThirdPartyAgents;
+  const paidThirdParty = completedThirdPartyAgentList;
+
+  const isPastCutoff = useMemo(() => {
+    const now = new Date();
+    return (
+      now.getHours() > CUTOFF_HOUR ||
+      (now.getHours() === CUTOFF_HOUR && now.getMinutes() >= CUTOFF_MINUTE)
+    );
+  }, []);
+
+  const totalOutstanding =
+    outstandingBatch.length + outstandingHolding.length + outstandingThirdParty.length;
+
+  const showCutoffAlert = isPastCutoff && totalOutstanding > 0 && !cutoffDismissed;
+
+  const totalItems =
+    outstandingBatch.length +
+    paidBatch.length +
+    outstandingHolding.length +
+    paidHolding.length +
+    outstandingThirdParty.length +
+    paidThirdParty.length;
+
+  const completedItems = paidBatch.length + paidHolding.length + paidThirdParty.length;
+  const progressValue = totalItems > 0 ? (completedItems / totalItems) * 100 : 0;
+
+
   const togglePlatform = (platform: string) => {
     setSelectedPlatforms((current) => {
       if (current.includes(platform)) {
