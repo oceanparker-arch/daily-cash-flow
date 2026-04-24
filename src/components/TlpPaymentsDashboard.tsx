@@ -553,7 +553,7 @@ const TlpPaymentsDashboard = () => {
 
               <div className="space-y-4 rounded-lg border border-border bg-panel-alt/40 p-4">
                 <div className="space-y-1">
-                  <h2 className="text-base font-semibold text-foreground">Payment Run Overview</h2>
+                  <h2 className="text-xl font-semibold text-foreground">Payment Run Overview</h2>
                   <p className="text-sm text-muted-foreground">
                     All agents with a balance or payment file today, grouped by category.
                   </p>
@@ -575,10 +575,11 @@ const TlpPaymentsDashboard = () => {
                     <div className="flex items-center gap-3">
                       <span className="text-sm font-semibold text-foreground">
                         Batch Payments —{" "}
-                        <span className="text-status-success">{paidBatch.length} paid</span>,{" "}
                         <span className={outstandingBatch.length > 0 ? "text-status-danger" : "text-status-success"}>
                           {outstandingBatch.length} outstanding
                         </span>
+                        {", "}
+                        <span className="text-status-success">{paidBatch.length} paid</span>
                       </span>
                     </div>
                     <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${batchOverviewOpen ? "rotate-180" : ""}`} />
@@ -629,10 +630,11 @@ const TlpPaymentsDashboard = () => {
                   <CollapsibleTrigger className="flex w-full items-center justify-between gap-4 px-4 py-3 text-left">
                     <span className="text-sm font-semibold text-foreground">
                       Holding Account Transfers —{" "}
-                      <span className="text-status-success">{paidHolding.length} paid</span>,{" "}
                       <span className={outstandingHolding.length > 0 ? "text-status-danger" : "text-status-success"}>
                         {outstandingHolding.length} outstanding
                       </span>
+                      {", "}
+                      <span className="text-status-success">{paidHolding.length} paid</span>
                     </span>
                     <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${holdingOverviewOpen ? "rotate-180" : ""}`} />
                   </CollapsibleTrigger>
@@ -668,10 +670,11 @@ const TlpPaymentsDashboard = () => {
                   <CollapsibleTrigger className="flex w-full items-center justify-between gap-4 px-4 py-3 text-left">
                     <span className="text-sm font-semibold text-foreground">
                       Third Party Agents —{" "}
-                      <span className="text-status-success">{paidThirdParty.length} paid</span>,{" "}
                       <span className={outstandingThirdParty.length > 0 ? "text-status-danger" : "text-status-success"}>
                         {outstandingThirdParty.length} outstanding
                       </span>
+                      {", "}
+                      <span className="text-status-success">{paidThirdParty.length} paid</span>
                     </span>
                     <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${thirdPartyOverviewOpen ? "rotate-180" : ""}`} />
                   </CollapsibleTrigger>
