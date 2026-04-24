@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Check, ChevronDown, RefreshCw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -37,15 +37,6 @@ type ThirdPartyAgent = {
 };
 
 type SoftwareGroup = {
-  software: string;
-  balancingSheetTotal: number;
-  paymentFileTotal: number;
-  cboTotal: number;
-  cboManualPayments: number;
-  hasPaymentFile: boolean;
-};
-
-type BatchGroup = {
   software: string;
   balancingSheetTotal: number;
   paymentFileTotal: number;
@@ -229,27 +220,8 @@ const TlpPaymentsDashboard = () => {
     [sortedFlags],
   );
 
-  const overallStatus = useMemo(
-    () =>
-      sortedFlags.some((flag) => flag.severity === "danger")
-        ? {
-            tone: "danger" as const,
-            label: "Action Required",
-            summary: `${issueCounts.issues} issues found across ${issueCounts.agents} agents`,
-          }
-        : sortedFlags.length > 0
-          ? {
-              tone: "warning" as const,
-              label: "Attention Required",
-              summary: `${issueCounts.issues} issues found across ${issueCounts.agents} agents`,
-            }
-          : {
-              tone: "success" as const,
-              label: "All Clear",
-              summary: "All files present, all totals match, no reconciliation differences",
-            },
-    [issueCounts.agents, issueCounts.issues, sortedFlags],
-  );
+  // overallStatus is defined after totalOutstanding below.
+
 
   const selectedGroups = useMemo(() => {
     const filtered = softwareGroups.filter((group) => selectedPlatforms.includes(group.software));
@@ -329,16 +301,52 @@ const TlpPaymentsDashboard = () => {
   const outstandingThirdParty = activeThirdPartyAgents;
   const paidThirdParty = completedThirdPartyAgentList;
 
-  const isPastCutoff = useMemo(() => {
+  const checkCutoff = () => {
     const now = new Date();
     return (
       now.getHours() > CUTOFF_HOUR ||
       (now.getHours() === CUTOFF_HOUR && now.getMinutes() >= CUTOFF_MINUTE)
     );
+  };
+
+  const [isPastCutoff, setIsPastCutoff] = useState(checkCutoff);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setIsPastCutoff(checkCutoff());
+    }, 60_000);
+    return () => clearInterval(interval);
   }, []);
 
   const totalOutstanding =
     outstandingBatch.length + outstandingHolding.length + outstandingThirdParty.length;
+
+  const overallStatus = useMemo(() => {
+    const hasDanger = sortedFlags.some((flag) => flag.severity === "danger");
+    const hasWarning = sortedFlags.length > 0;
+    const hasOutstanding = totalOutstanding > 0;
+
+    if (hasDanger) return {
+      tone: "danger" as const,
+      label: "Action Required",
+      summary: `${issueCounts.issues} issue${issueCounts.issues !== 1 ? "s" : ""} found across ${issueCounts.agents} agent${issueCounts.agents !== 1 ? "s" : ""} — ${totalOutstanding} payment${totalOutstanding !== 1 ? "s" : ""} outstanding`,
+    };
+    if (hasWarning) return {
+      tone: "warning" as const,
+      label: "Attention Required",
+      summary: `${issueCounts.issues} issue${issueCounts.issues !== 1 ? "s" : ""} to review — ${totalOutstanding} payment${totalOutstanding !== 1 ? "s" : ""} outstanding`,
+    };
+    if (hasOutstanding) return {
+      tone: "warning" as const,
+      label: "Payments In Progress",
+      summary: `No issues — ${totalOutstanding} payment${totalOutstanding !== 1 ? "s" : ""} still outstanding`,
+    };
+    return {
+      tone: "success" as const,
+      label: "All Clear",
+      summary: "All payments complete, no issues outstanding",
+    };
+  }, [sortedFlags, issueCounts, totalOutstanding]);
 
   const showCutoffAlert = isPastCutoff && totalOutstanding > 0 && !cutoffDismissed;
 
@@ -391,7 +399,16 @@ const TlpPaymentsDashboard = () => {
 
   return (
     <main className="min-h-screen bg-app">
-      <div className="mx-auto flex w-full max-w-[1680px] flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
+      <div className="fixed left-0 right-0 top-0 z-50 h-1 bg-border">
+        <div
+          className="h-full transition-all duration-500"
+          style={{
+            width: `${progressValue}%`,
+            backgroundColor: progressValue === 100 ? "var(--status-success)" : "var(--color-primary, #4472C4)",
+          }}
+        />
+      </div>
+      <div className="mx-auto flex w-full max-w-[1680px] flex-col gap-6 px-4 py-6 pt-1 sm:px-6 lg:px-8">
         <Tabs defaultValue="run-status" className="space-y-6 pb-4">
           <div className="sticky top-0 z-20 space-y-2 bg-app pb-2">
             <header className="rounded-lg border border-border bg-header text-header-foreground shadow-sm">
@@ -545,7 +562,7 @@ const TlpPaymentsDashboard = () => {
 
               <div className="space-y-4 rounded-lg border border-border bg-panel-alt/40 p-4">
                 <div className="space-y-1">
-                  <h2 className="text-base font-semibold text-foreground">Payment Run Overview</h2>
+                  <h2 className="text-xl font-semibold text-foreground">Payment Run Overview</h2>
                   <p className="text-sm text-muted-foreground">
                     All agents with a balance or payment file today, grouped by category.
                   </p>
@@ -567,10 +584,11 @@ const TlpPaymentsDashboard = () => {
                     <div className="flex items-center gap-3">
                       <span className="text-sm font-semibold text-foreground">
                         Batch Payments —{" "}
-                        <span className="text-status-success">{paidBatch.length} paid</span>,{" "}
                         <span className={outstandingBatch.length > 0 ? "text-status-danger" : "text-status-success"}>
                           {outstandingBatch.length} outstanding
                         </span>
+                        {", "}
+                        <span className="text-status-success">{paidBatch.length} paid</span>
                       </span>
                     </div>
                     <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${batchOverviewOpen ? "rotate-180" : ""}`} />
@@ -621,10 +639,11 @@ const TlpPaymentsDashboard = () => {
                   <CollapsibleTrigger className="flex w-full items-center justify-between gap-4 px-4 py-3 text-left">
                     <span className="text-sm font-semibold text-foreground">
                       Holding Account Transfers —{" "}
-                      <span className="text-status-success">{paidHolding.length} paid</span>,{" "}
                       <span className={outstandingHolding.length > 0 ? "text-status-danger" : "text-status-success"}>
                         {outstandingHolding.length} outstanding
                       </span>
+                      {", "}
+                      <span className="text-status-success">{paidHolding.length} paid</span>
                     </span>
                     <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${holdingOverviewOpen ? "rotate-180" : ""}`} />
                   </CollapsibleTrigger>
@@ -660,10 +679,11 @@ const TlpPaymentsDashboard = () => {
                   <CollapsibleTrigger className="flex w-full items-center justify-between gap-4 px-4 py-3 text-left">
                     <span className="text-sm font-semibold text-foreground">
                       Third Party Agents —{" "}
-                      <span className="text-status-success">{paidThirdParty.length} paid</span>,{" "}
                       <span className={outstandingThirdParty.length > 0 ? "text-status-danger" : "text-status-success"}>
                         {outstandingThirdParty.length} outstanding
                       </span>
+                      {", "}
+                      <span className="text-status-success">{paidThirdParty.length} paid</span>
                     </span>
                     <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${thirdPartyOverviewOpen ? "rotate-180" : ""}`} />
                   </CollapsibleTrigger>
@@ -712,6 +732,10 @@ const TlpPaymentsDashboard = () => {
                 <SummaryMetric label="Total (£)" value={softwareSummary.cboTotal} />
                 <SummaryMetric label="Manual Payments (£)" value={softwareSummary.cboManualPayments} />
               </div>
+
+              <p className="text-sm text-muted-foreground">
+                Showing {selectedGroups.length} of {softwareGroups.length} platforms
+              </p>
 
               <div className="border-t border-border pt-6">
                 <div className="mb-4 grid grid-cols-[minmax(180px,1.2fr)_minmax(180px,1fr)_minmax(180px,1fr)_minmax(180px,1fr)] gap-4 px-4 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
@@ -769,9 +793,14 @@ const TlpPaymentsDashboard = () => {
               </div>
 
               <div className="space-y-3">
-                <div>
-                  <h3 className="text-base font-semibold text-foreground">Holding Account Transfers</h3>
-                  <p className="text-sm text-muted-foreground">Separate holding transfer agents for manual bank payment oversight.</p>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-base font-semibold text-foreground">Holding Account Transfers</h3>
+                    <p className="text-sm text-muted-foreground">Separate holding transfer agents for manual bank payment oversight.</p>
+                  </div>
+                  <p className="text-sm text-muted-foreground tabular-nums">
+                    {activeHoldingTransfers.length} remaining
+                  </p>
                 </div>
 
                 <div className="divide-y divide-border border-y border-border bg-panel">
@@ -843,9 +872,14 @@ const TlpPaymentsDashboard = () => {
               </div>
 
               <div className="space-y-3">
-                <div>
-                  <h3 className="text-base font-semibold text-foreground">Third Party Agents</h3>
-                  <p className="text-sm text-muted-foreground">Issue and warning rows are surfaced first for rapid review.</p>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-base font-semibold text-foreground">Third Party Agents</h3>
+                    <p className="text-sm text-muted-foreground">Issue and warning rows are surfaced first for rapid review.</p>
+                  </div>
+                  <p className="text-sm text-muted-foreground tabular-nums">
+                    {activeThirdPartyAgents.length} remaining
+                  </p>
                 </div>
 
                 <div className="overflow-x-auto rounded-lg border border-border">
