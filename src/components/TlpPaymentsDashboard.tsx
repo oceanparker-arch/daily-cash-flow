@@ -366,7 +366,6 @@ const TlpPaymentsDashboard = () => {
   const togglePlatform = (platform: string) => {
     setSelectedPlatforms((current) => {
       if (current.includes(platform)) {
-        if (current.length === 1) return current;
         return current.filter((item) => item !== platform);
       }
 
@@ -380,7 +379,7 @@ const TlpPaymentsDashboard = () => {
 
   const selectAllPlatforms = () => setSelectedPlatforms(allPlatforms);
 
-  const clearPlatforms = () => setSelectedPlatforms([allPlatforms[0]]);
+  const clearPlatforms = () => setSelectedPlatforms([]);
 
   const markHoldingTransferDone = (agentName: string) => {
     setCompletedHoldingTransfers((prev) => {
