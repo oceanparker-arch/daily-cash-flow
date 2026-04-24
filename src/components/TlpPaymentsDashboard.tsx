@@ -468,7 +468,7 @@ const TlpPaymentsDashboard = () => {
             </TabsList>
           </div>
 
-          <TabsContent value="issues" className="mt-0">
+          <TabsContent value="run-status" className="mt-0">
             <section aria-labelledby="issues-heading" className="space-y-4">
               <div className="space-y-1">
                 <h2 id="issues-heading" className="text-xl font-semibold text-foreground">
@@ -508,6 +508,158 @@ const TlpPaymentsDashboard = () => {
                   No issues currently require attention.
                 </div>
               )}
+
+              <div className="space-y-4 border-t border-border pt-6">
+                <div className="space-y-1">
+                  <h2 className="text-xl font-semibold text-foreground">Payment Run Overview</h2>
+                  <p className="text-sm text-muted-foreground">
+                    All agents with a balance or payment file today, grouped by category.
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-sm text-muted-foreground">
+                    <span>Run progress</span>
+                    <span className="tabular-nums">
+                      {completedItems} / {totalItems} complete
+                    </span>
+                  </div>
+                  <Progress value={progressValue} />
+                </div>
+
+                {/* Batch Payments group */}
+                <Collapsible open={batchOverviewOpen} onOpenChange={setBatchOverviewOpen} className="rounded-lg border border-border bg-panel">
+                  <CollapsibleTrigger className="flex w-full items-center justify-between gap-4 px-4 py-3 text-left">
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm font-semibold text-foreground">
+                        Batch Payments —{" "}
+                        <span className="text-status-success">{paidBatch.length} paid</span>,{" "}
+                        <span className={outstandingBatch.length > 0 ? "text-status-danger" : "text-status-success"}>
+                          {outstandingBatch.length} outstanding
+                        </span>
+                      </span>
+                    </div>
+                    <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${batchOverviewOpen ? "rotate-180" : ""}`} />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="border-t border-border">
+                    <div className="divide-y divide-border">
+                      {outstandingBatch.map((g) => {
+                        const noBalancing = g.hasPaymentFile && g.balancingSheetTotal === 0;
+                        return (
+                          <div key={g.software} className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-4 px-4 py-3">
+                            <span className="font-semibold text-foreground">{g.software}</span>
+                            <span className="tabular-nums text-sm text-foreground">{formatCurrency(g.balancingSheetTotal)}</span>
+                            {noBalancing ? (
+                              <span className="inline-flex items-center rounded-full border border-status-warning/20 bg-status-warning-surface px-3 py-1 text-xs font-semibold text-status-warning-foreground">
+                                No Balancing Sheet
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center rounded-full border border-status-danger/20 bg-status-danger-surface px-3 py-1 text-xs font-semibold text-status-danger-foreground">
+                                Outstanding
+                              </span>
+                            )}
+                            <Button type="button" onClick={() => markBatchGroupDone(g.software)} className="min-w-32">
+                              <Check />
+                              Mark as Done
+                            </Button>
+                          </div>
+                        );
+                      })}
+                      {paidBatch.map((g) => (
+                        <div key={g.software} className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-4 px-4 py-3 text-muted-foreground">
+                          <span className="font-semibold">{g.software}</span>
+                          <span className="tabular-nums text-sm">{formatCurrency(g.balancingSheetTotal)}</span>
+                          <span className="inline-flex items-center rounded-full border border-status-success/20 bg-status-success-surface px-3 py-1 text-xs font-semibold text-status-success-foreground">
+                            ✅ Paid
+                          </span>
+                          <span />
+                        </div>
+                      ))}
+                      {outstandingBatch.length === 0 && paidBatch.length === 0 && (
+                        <div className="px-4 py-4 text-sm text-muted-foreground">No batch payment groups in scope.</div>
+                      )}
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+
+                {/* Holding group */}
+                <Collapsible open={holdingOverviewOpen} onOpenChange={setHoldingOverviewOpen} className="rounded-lg border border-border bg-panel">
+                  <CollapsibleTrigger className="flex w-full items-center justify-between gap-4 px-4 py-3 text-left">
+                    <span className="text-sm font-semibold text-foreground">
+                      Holding Account Transfers —{" "}
+                      <span className="text-status-success">{paidHolding.length} paid</span>,{" "}
+                      <span className={outstandingHolding.length > 0 ? "text-status-danger" : "text-status-success"}>
+                        {outstandingHolding.length} outstanding
+                      </span>
+                    </span>
+                    <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${holdingOverviewOpen ? "rotate-180" : ""}`} />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="border-t border-border">
+                    <div className="divide-y divide-border">
+                      {outstandingHolding.map((agent) => (
+                        <div key={agent.agent} className="grid grid-cols-[1fr_auto_auto] items-center gap-4 px-4 py-3">
+                          <span className="font-semibold text-foreground">{agent.agent}</span>
+                          <span className="tabular-nums text-sm text-foreground">{formatCurrency(agent.holdingTransfer)}</span>
+                          <span className="inline-flex items-center rounded-full border border-status-danger/20 bg-status-danger-surface px-3 py-1 text-xs font-semibold text-status-danger-foreground">
+                            Outstanding
+                          </span>
+                        </div>
+                      ))}
+                      {paidHolding.map((agent) => (
+                        <div key={agent.agent} className="grid grid-cols-[1fr_auto_auto] items-center gap-4 px-4 py-3 text-muted-foreground">
+                          <span className="font-semibold">{agent.agent}</span>
+                          <span className="tabular-nums text-sm">{formatCurrency(agent.holdingTransfer)}</span>
+                          <span className="inline-flex items-center rounded-full border border-status-success/20 bg-status-success-surface px-3 py-1 text-xs font-semibold text-status-success-foreground">
+                            ✅ Paid
+                          </span>
+                        </div>
+                      ))}
+                      {outstandingHolding.length === 0 && paidHolding.length === 0 && (
+                        <div className="px-4 py-4 text-sm text-muted-foreground">No holding account transfers in scope.</div>
+                      )}
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+
+                {/* Third Party group */}
+                <Collapsible open={thirdPartyOverviewOpen} onOpenChange={setThirdPartyOverviewOpen} className="rounded-lg border border-border bg-panel">
+                  <CollapsibleTrigger className="flex w-full items-center justify-between gap-4 px-4 py-3 text-left">
+                    <span className="text-sm font-semibold text-foreground">
+                      Third Party Agents —{" "}
+                      <span className="text-status-success">{paidThirdParty.length} paid</span>,{" "}
+                      <span className={outstandingThirdParty.length > 0 ? "text-status-danger" : "text-status-success"}>
+                        {outstandingThirdParty.length} outstanding
+                      </span>
+                    </span>
+                    <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${thirdPartyOverviewOpen ? "rotate-180" : ""}`} />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="border-t border-border">
+                    <div className="divide-y divide-border">
+                      {outstandingThirdParty.map((agent) => (
+                        <div key={agent.agent} className="grid grid-cols-[1fr_auto_auto] items-center gap-4 px-4 py-3">
+                          <span className="font-semibold text-foreground">{agent.agent}</span>
+                          <span className="tabular-nums text-sm text-foreground">{formatCurrency(agent.cboTotal)}</span>
+                          <span className="inline-flex items-center rounded-full border border-status-danger/20 bg-status-danger-surface px-3 py-1 text-xs font-semibold text-status-danger-foreground">
+                            Outstanding
+                          </span>
+                        </div>
+                      ))}
+                      {paidThirdParty.map((agent) => (
+                        <div key={agent.agent} className="grid grid-cols-[1fr_auto_auto] items-center gap-4 px-4 py-3 text-muted-foreground">
+                          <span className="font-semibold">{agent.agent}</span>
+                          <span className="tabular-nums text-sm">{formatCurrency(agent.cboTotal)}</span>
+                          <span className="inline-flex items-center rounded-full border border-status-success/20 bg-status-success-surface px-3 py-1 text-xs font-semibold text-status-success-foreground">
+                            ✅ Paid
+                          </span>
+                        </div>
+                      ))}
+                      {outstandingThirdParty.length === 0 && paidThirdParty.length === 0 && (
+                        <div className="px-4 py-4 text-sm text-muted-foreground">No third party agents in scope.</div>
+                      )}
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+              </div>
             </section>
           </TabsContent>
 
