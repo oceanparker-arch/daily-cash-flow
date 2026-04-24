@@ -391,7 +391,7 @@ const TlpPaymentsDashboard = () => {
                   </div>
                 </div>
 
-                <Button variant="toolbar" className="min-w-32 bg-panel text-foreground hover:-translate-y-0.5">
+                <Button variant="toolbar" onClick={handleRefresh} className="min-w-32 bg-panel text-foreground hover:-translate-y-0.5">
                   <RefreshCw className="motion-safe:group-hover:animate-spin-slow" />
                   Refresh
                 </Button>
