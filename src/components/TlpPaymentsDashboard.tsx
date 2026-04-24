@@ -923,6 +923,53 @@ const TlpPaymentsDashboard = () => {
           </TabsContent>
         </Tabs>
       </div>
+
+      {showCutoffAlert && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="w-full max-w-lg rounded-lg border border-border bg-panel p-6 shadow-xl">
+            <h2 className="text-lg font-bold text-status-danger">
+              ⚠️ Outstanding Payments Past {String(CUTOFF_HOUR).padStart(2, "0")}:{String(CUTOFF_MINUTE).padStart(2, "0")}
+            </h2>
+            <div className="mt-4 space-y-4">
+              {outstandingBatch.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground">Batch</h3>
+                  <ul className="mt-1 space-y-1 text-sm text-muted-foreground">
+                    {outstandingBatch.map((g) => (
+                      <li key={g.software}>{g.software}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {outstandingHolding.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground">Holding Account Transfers</h3>
+                  <ul className="mt-1 space-y-1 text-sm text-muted-foreground">
+                    {outstandingHolding.map((agent) => (
+                      <li key={agent.agent}>{agent.agent}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {outstandingThirdParty.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground">Third Party Agents</h3>
+                  <ul className="mt-1 space-y-1 text-sm text-muted-foreground">
+                    {outstandingThirdParty.map((agent) => (
+                      <li key={agent.agent}>{agent.agent}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+            <div className="mt-6 flex justify-end">
+              <Button type="button" onClick={() => setCutoffDismissed(true)}>
+                Dismiss
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 };
