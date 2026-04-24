@@ -291,10 +291,10 @@ const TlpPaymentsDashboard = () => {
       softwareGroups.filter(
         (g) =>
           activePlatforms.includes(g.software) &&
-          !completedBatchGroups.has(g.software) &&
+          !secondApprovedGroups.has(g.software) &&
           (g.balancingSheetTotal > 0 || g.hasPaymentFile),
       ),
-    [activePlatforms, completedBatchGroups],
+    [activePlatforms, secondApprovedGroups],
   );
 
   const paidBatch = useMemo(
@@ -302,10 +302,10 @@ const TlpPaymentsDashboard = () => {
       softwareGroups.filter(
         (g) =>
           activePlatforms.includes(g.software) &&
-          completedBatchGroups.has(g.software) &&
+          secondApprovedGroups.has(g.software) &&
           (g.balancingSheetTotal > 0 || g.hasPaymentFile),
       ),
-    [activePlatforms, completedBatchGroups],
+    [activePlatforms, secondApprovedGroups],
   );
 
   const outstandingHolding = activeHoldingTransfers;
