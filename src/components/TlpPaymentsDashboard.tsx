@@ -3,8 +3,12 @@ import { Check, ChevronDown, RefreshCw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Toggle } from "@/components/ui/toggle";
+
+const CUTOFF_HOUR = 16;
+const CUTOFF_MINUTE = 30;
 
 type IssueSeverity = "danger" | "warning";
 type IssueType =
