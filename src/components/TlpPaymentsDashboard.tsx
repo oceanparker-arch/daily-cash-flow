@@ -393,7 +393,7 @@ const TlpPaymentsDashboard = () => {
     <main className="min-h-screen bg-app">
       <div className="mx-auto flex w-full max-w-[1680px] flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
         <Tabs defaultValue="run-status" className="space-y-6 pb-4">
-          <div className="sticky top-0 z-20 space-y-4 bg-app pb-2">
+          <div className="sticky top-0 z-20 space-y-2 bg-app pb-2">
             <header className="rounded-lg border border-border bg-header text-header-foreground shadow-sm">
               <div className="flex flex-col gap-4 px-5 py-4 lg:flex-row lg:items-center lg:justify-between lg:px-6">
                 <div className="space-y-1">
@@ -404,16 +404,35 @@ const TlpPaymentsDashboard = () => {
                   </div>
                 </div>
 
-                <Button variant="toolbar" onClick={handleRefresh} className="min-w-32 bg-panel text-foreground hover:-translate-y-0.5">
-                  <RefreshCw className="motion-safe:group-hover:animate-spin-slow" />
-                  Refresh
-                </Button>
+                <div className="flex items-center gap-4 self-end lg:self-auto">
+                  <div className="flex items-center gap-2 text-sm text-header-foreground/80">
+                    <button
+                      type="button"
+                      onClick={selectAllPlatforms}
+                      className="text-sm text-muted-foreground hover:text-foreground"
+                    >
+                      Select all
+                    </button>
+                    <span className="text-muted-foreground">·</span>
+                    <button
+                      type="button"
+                      onClick={clearPlatforms}
+                      className="text-sm text-muted-foreground hover:text-foreground"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                  <Button variant="toolbar" onClick={handleRefresh} className="min-w-32 bg-panel text-foreground hover:-translate-y-0.5">
+                    <RefreshCw className="motion-safe:group-hover:animate-spin-slow" />
+                    Refresh
+                  </Button>
+                </div>
               </div>
             </header>
 
             <section
               aria-label="Overall run status"
-              className={`rounded-lg border px-5 py-4 shadow-sm ${toneClasses[overallStatus.tone].banner}`}
+              className={`rounded-lg border px-5 py-4 ${toneClasses[overallStatus.tone].banner}`}
             >
               <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                 <div className="flex items-center gap-3">
@@ -428,56 +447,54 @@ const TlpPaymentsDashboard = () => {
               </div>
             </section>
 
-            <section className="rounded-lg border border-border bg-panel px-4 py-3 shadow-sm">
-              <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:gap-3">
-                  <span className="text-sm font-medium text-muted-foreground">Platforms:</span>
-                  <div className="flex flex-wrap gap-2">
-                    {softwareGroups.map((group) => {
-                      const selected = selectedPlatforms.includes(group.software);
+            <div className="flex items-center gap-3 py-2">
+              <span className="text-sm font-medium text-muted-foreground">Platforms:</span>
+              <div className="flex flex-wrap gap-2">
+                {softwareGroups.map((group) => {
+                  const selected = selectedPlatforms.includes(group.software);
 
-                      return (
-                        <Toggle
-                          key={group.software}
-                          pressed={selected}
-                          onPressedChange={() => togglePlatform(group.software)}
-                          variant={selected ? "default" : "outline"}
-                          className={selected ? undefined : "text-muted-foreground"}
-                        >
-                          {group.software}
-                        </Toggle>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3 self-end lg:self-auto">
-                  <button type="button" onClick={selectAllPlatforms} className="text-sm font-medium text-muted-foreground hover:text-foreground">
-                    Select all
-                  </button>
-                  <span className="text-muted-foreground">/</span>
-                  <button type="button" onClick={clearPlatforms} className="text-sm font-medium text-muted-foreground hover:text-foreground">
-                    Clear
-                  </button>
-                </div>
+                  return (
+                    <Toggle
+                      key={group.software}
+                      pressed={selected}
+                      onPressedChange={() => togglePlatform(group.software)}
+                      className={
+                        selected
+                          ? "h-auto rounded-full border border-foreground bg-foreground px-3 py-1 text-xs font-semibold text-background data-[state=on]:bg-foreground data-[state=on]:text-background hover:bg-foreground hover:text-background"
+                          : "h-auto rounded-full border border-border bg-transparent px-3 py-1 text-xs text-muted-foreground hover:bg-panel-alt"
+                      }
+                    >
+                      {group.software}
+                    </Toggle>
+                  );
+                })}
               </div>
-            </section>
+            </div>
 
-            <TabsList className="h-auto w-full justify-start gap-2 rounded-lg border border-border bg-panel p-2">
-            <TabsTrigger value="run-status" className="gap-2 rounded-md px-4 py-2">
-              <span>Run Status</span>
-              {hasIssues && (
-                <span className="inline-flex min-w-6 items-center justify-center rounded-full border border-status-danger/20 bg-status-danger-surface px-2 py-0.5 text-xs font-semibold text-status-danger-foreground">
-                  {issueCounts.issues}
-                </span>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="tlp-account-payments" className="rounded-md px-4 py-2">
-              TLP Account Payments
-            </TabsTrigger>
-            <TabsTrigger value="manual-bank-payments" className="rounded-md px-4 py-2">
-              Manual Bank Payments
-            </TabsTrigger>
+            <TabsList className="flex h-auto w-full justify-start gap-0 rounded-none border-b border-border bg-transparent p-0">
+              <TabsTrigger
+                value="run-status"
+                className="gap-2 rounded-none border-b-2 border-transparent bg-transparent px-5 py-3 text-sm font-medium text-muted-foreground transition-colors hover:border-border hover:text-foreground data-[state=active]:border-foreground data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none"
+              >
+                <span>Run Status</span>
+                {hasIssues && (
+                  <span className="inline-flex min-w-6 items-center justify-center rounded-full border border-status-danger/20 bg-status-danger-surface px-2 py-0.5 text-xs font-semibold text-status-danger-foreground">
+                    {issueCounts.issues}
+                  </span>
+                )}
+              </TabsTrigger>
+              <TabsTrigger
+                value="tlp-account-payments"
+                className="rounded-none border-b-2 border-transparent bg-transparent px-5 py-3 text-sm font-medium text-muted-foreground transition-colors hover:border-border hover:text-foreground data-[state=active]:border-foreground data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none"
+              >
+                TLP Account Payments
+              </TabsTrigger>
+              <TabsTrigger
+                value="manual-bank-payments"
+                className="rounded-none border-b-2 border-transparent bg-transparent px-5 py-3 text-sm font-medium text-muted-foreground transition-colors hover:border-border hover:text-foreground data-[state=active]:border-foreground data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none"
+              >
+                Manual Bank Payments
+              </TabsTrigger>
             </TabsList>
           </div>
 
