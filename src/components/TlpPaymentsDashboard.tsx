@@ -142,11 +142,6 @@ const todayLabel = new Intl.DateTimeFormat("en-GB", {
   year: "numeric",
 }).format(new Date());
 
-const lastRefreshLabel = new Intl.DateTimeFormat("en-GB", {
-  hour: "2-digit",
-  minute: "2-digit",
-}).format(new Date());
-
 const sortedAgents = [...thirdPartyAgents].sort(
   (a, b) => statusOrder[a.status] - statusOrder[b.status] || a.agent.localeCompare(b.agent),
 );
@@ -197,13 +192,23 @@ const TlpPaymentsDashboard = () => {
   const [batchOverviewOpen, setBatchOverviewOpen] = useState(false);
   const [holdingOverviewOpen, setHoldingOverviewOpen] = useState(false);
   const [thirdPartyOverviewOpen, setThirdPartyOverviewOpen] = useState(false);
+  const [lastRefreshLabel, setLastRefreshLabel] = useState(() =>
+    new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit" }).format(new Date()),
+  );
 
   const markBatchGroupDone = (software: string) => {
-    setCompletedBatchGroups((prev) => new Set([...prev, software]));
+    setCompletedBatchGroups((prev) => {
+      const next = new Set(prev);
+      next.add(software);
+      return next;
+    });
   };
 
   const handleRefresh = () => {
     setCutoffDismissed(false);
+    setLastRefreshLabel(
+      new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit" }).format(new Date()),
+    );
   };
 
   const sortedFlags = useMemo(
@@ -366,14 +371,22 @@ const TlpPaymentsDashboard = () => {
 
   const selectAllPlatforms = () => setSelectedPlatforms(allPlatforms);
 
-  const clearPlatforms = () => setSelectedPlatforms(allPlatforms);
+  const clearPlatforms = () => setSelectedPlatforms([allPlatforms[0]]);
 
   const markHoldingTransferDone = (agentName: string) => {
-    setCompletedHoldingTransfers((prev) => new Set([...prev, agentName]));
+    setCompletedHoldingTransfers((prev) => {
+      const next = new Set(prev);
+      next.add(agentName);
+      return next;
+    });
   };
 
   const markThirdPartyAgentDone = (agentName: string) => {
-    setCompletedThirdPartyAgents((current) => new Set(current).add(agentName));
+    setCompletedThirdPartyAgents((prev) => {
+      const next = new Set(prev);
+      next.add(agentName);
+      return next;
+    });
   };
 
   return (
@@ -480,14 +493,18 @@ const TlpPaymentsDashboard = () => {
               </div>
 
               {hasIssues ? (
-                <ul className="divide-y divide-border border-y border-border bg-panel">
+                <ul className="space-y-2">
                   {sortedFlags.map((flag) => {
                     const tone = toneClasses[flag.severity];
+                    const accent =
+                      flag.severity === "danger"
+                        ? "border-l-status-danger bg-status-danger-surface/40"
+                        : "border-l-status-warning bg-status-warning-surface/40";
 
                     return (
                       <li
                         key={`${flag.agent}-${flag.type}`}
-                        className="grid gap-3 px-4 py-4 lg:grid-cols-[minmax(340px,1.2fr)_minmax(280px,1fr)] lg:items-center lg:px-5"
+                        className={`rounded-md border border-border border-l-4 px-4 py-3 ${accent}`}
                       >
                         <div className="flex min-w-0 flex-wrap items-center gap-3">
                           <span className="font-semibold text-foreground">{flag.agent}</span>
@@ -498,20 +515,20 @@ const TlpPaymentsDashboard = () => {
                             {flag.type}
                           </span>
                         </div>
-                        <p className="text-sm text-muted-foreground lg:text-right">{flag.detail}</p>
+                        <p className="mt-2 text-sm text-foreground/80">{flag.detail}</p>
                       </li>
                     );
                   })}
                 </ul>
               ) : (
-                <div className="border-y border-border bg-panel px-4 py-6 text-sm text-muted-foreground">
-                  No issues currently require attention.
+                <div className="flex items-center gap-2 rounded-md border border-status-success/20 bg-status-success-surface px-3 py-2 text-sm font-medium text-status-success-foreground">
+                  <span>✅ No issues — payment run is clear</span>
                 </div>
               )}
 
-              <div className="space-y-4 border-t border-border pt-6">
+              <div className="space-y-4 rounded-lg border border-border bg-panel-alt/40 p-4">
                 <div className="space-y-1">
-                  <h2 className="text-xl font-semibold text-foreground">Payment Run Overview</h2>
+                  <h2 className="text-base font-semibold text-foreground">Payment Run Overview</h2>
                   <p className="text-sm text-muted-foreground">
                     All agents with a balance or payment file today, grouped by category.
                   </p>
