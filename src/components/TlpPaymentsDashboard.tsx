@@ -173,7 +173,8 @@ const SummaryMetric = ({ label, value }: { label: string; value: number }) => (
 
 const TlpPaymentsDashboard = () => {
   const allPlatforms = softwareGroups.map((group) => group.software);
-  const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>(allPlatforms);
+  const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
+  const activePlatforms = selectedPlatforms.length === 0 ? allPlatforms : selectedPlatforms;
   const [completedHoldingTransfers, setCompletedHoldingTransfers] = useState<Set<string>>(new Set());
   const [completedThirdPartyAgents, setCompletedThirdPartyAgents] = useState<Set<string>>(new Set());
   const [completedBatchGroups, setCompletedBatchGroups] = useState<Set<string>>(new Set());
