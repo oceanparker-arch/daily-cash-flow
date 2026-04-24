@@ -237,12 +237,14 @@ const TlpPaymentsDashboard = () => {
     const filtered = softwareGroups.filter((group) => activePlatforms.includes(group.software));
 
     return [...filtered].sort((a, b) => {
+      const aApproved = secondApprovedGroups.has(a.software) ? 2 : firstApprovedGroups.has(a.software) ? 1 : 0;
+      const bApproved = secondApprovedGroups.has(b.software) ? 2 : firstApprovedGroups.has(b.software) ? 1 : 0;
+      if (aApproved !== bApproved) return aApproved - bApproved;
       const aMismatch = a.balancingSheetTotal !== a.paymentFileTotal ? 0 : 1;
       const bMismatch = b.balancingSheetTotal !== b.paymentFileTotal ? 0 : 1;
-
       return aMismatch - bMismatch || a.software.localeCompare(b.software);
     });
-  }, [activePlatforms]);
+  }, [activePlatforms, firstApprovedGroups, secondApprovedGroups]);
 
   const softwareSummary = selectedGroups.reduce(
     (totals, group) => ({
