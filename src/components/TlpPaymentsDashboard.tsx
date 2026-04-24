@@ -621,10 +621,24 @@ const TlpPaymentsDashboard = () => {
                                 Outstanding
                               </span>
                             )}
-                            <Button type="button" onClick={() => markBatchGroupDone(g.software)} className="min-w-32">
-                              <Check />
-                              Mark as Done
-                            </Button>
+                            {firstApprovedGroups.has(g.software) ? (
+                              <Button
+                                type="button"
+                                onClick={() => markSecondApproved(g.software)}
+                                className="min-w-36 border border-status-warning/20 bg-status-warning-surface text-status-warning-foreground hover:bg-status-warning/20"
+                              >
+                                Second Approve
+                              </Button>
+                            ) : (
+                              <Button
+                                type="button"
+                                onClick={() => markFirstApproved(g.software)}
+                                className="min-w-36"
+                              >
+                                <Check />
+                                Mark as Paid
+                              </Button>
+                            )}
                           </div>
                         );
                       })}
