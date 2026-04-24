@@ -192,13 +192,23 @@ const TlpPaymentsDashboard = () => {
   const [batchOverviewOpen, setBatchOverviewOpen] = useState(false);
   const [holdingOverviewOpen, setHoldingOverviewOpen] = useState(false);
   const [thirdPartyOverviewOpen, setThirdPartyOverviewOpen] = useState(false);
+  const [lastRefreshLabel, setLastRefreshLabel] = useState(() =>
+    new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit" }).format(new Date()),
+  );
 
   const markBatchGroupDone = (software: string) => {
-    setCompletedBatchGroups((prev) => new Set([...prev, software]));
+    setCompletedBatchGroups((prev) => {
+      const next = new Set(prev);
+      next.add(software);
+      return next;
+    });
   };
 
   const handleRefresh = () => {
     setCutoffDismissed(false);
+    setLastRefreshLabel(
+      new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit" }).format(new Date()),
+    );
   };
 
   const sortedFlags = useMemo(
