@@ -379,7 +379,7 @@ const TlpPaymentsDashboard = () => {
   return (
     <main className="min-h-screen bg-app">
       <div className="mx-auto flex w-full max-w-[1680px] flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
-        <Tabs defaultValue="issues" className="space-y-6 pb-4">
+        <Tabs defaultValue="run-status" className="space-y-6 pb-4">
           <div className="sticky top-0 z-20 space-y-4 bg-app pb-2">
             <header className="rounded-lg border border-border bg-header text-header-foreground shadow-sm">
               <div className="flex flex-col gap-4 px-5 py-4 lg:flex-row lg:items-center lg:justify-between lg:px-6">
