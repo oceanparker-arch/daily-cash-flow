@@ -177,7 +177,8 @@ const TlpPaymentsDashboard = () => {
   const activePlatforms = selectedPlatforms.length === 0 ? allPlatforms : selectedPlatforms;
   const [completedHoldingTransfers, setCompletedHoldingTransfers] = useState<Set<string>>(new Set());
   const [completedThirdPartyAgents, setCompletedThirdPartyAgents] = useState<Set<string>>(new Set());
-  const [completedBatchGroups, setCompletedBatchGroups] = useState<Set<string>>(new Set());
+  const [firstApprovedGroups, setFirstApprovedGroups] = useState<Set<string>>(new Set());
+  const [secondApprovedGroups, setSecondApprovedGroups] = useState<Set<string>>(new Set());
   const [holdingCompletedOpen, setHoldingCompletedOpen] = useState(false);
   const [thirdPartyCompletedOpen, setThirdPartyCompletedOpen] = useState(false);
   const [cutoffDismissed, setCutoffDismissed] = useState(false);
@@ -188,8 +189,16 @@ const TlpPaymentsDashboard = () => {
     new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit" }).format(new Date()),
   );
 
-  const markBatchGroupDone = (software: string) => {
-    setCompletedBatchGroups((prev) => {
+  const markFirstApproved = (software: string) => {
+    setFirstApprovedGroups((prev) => {
+      const next = new Set(prev);
+      next.add(software);
+      return next;
+    });
+  };
+
+  const markSecondApproved = (software: string) => {
+    setSecondApprovedGroups((prev) => {
       const next = new Set(prev);
       next.add(software);
       return next;
@@ -228,12 +237,14 @@ const TlpPaymentsDashboard = () => {
     const filtered = softwareGroups.filter((group) => activePlatforms.includes(group.software));
 
     return [...filtered].sort((a, b) => {
+      const aApproved = secondApprovedGroups.has(a.software) ? 2 : firstApprovedGroups.has(a.software) ? 1 : 0;
+      const bApproved = secondApprovedGroups.has(b.software) ? 2 : firstApprovedGroups.has(b.software) ? 1 : 0;
+      if (aApproved !== bApproved) return aApproved - bApproved;
       const aMismatch = a.balancingSheetTotal !== a.paymentFileTotal ? 0 : 1;
       const bMismatch = b.balancingSheetTotal !== b.paymentFileTotal ? 0 : 1;
-
       return aMismatch - bMismatch || a.software.localeCompare(b.software);
     });
-  }, [activePlatforms]);
+  }, [activePlatforms, firstApprovedGroups, secondApprovedGroups]);
 
   const softwareSummary = selectedGroups.reduce(
     (totals, group) => ({
@@ -280,10 +291,10 @@ const TlpPaymentsDashboard = () => {
       softwareGroups.filter(
         (g) =>
           activePlatforms.includes(g.software) &&
-          !completedBatchGroups.has(g.software) &&
+          !secondApprovedGroups.has(g.software) &&
           (g.balancingSheetTotal > 0 || g.hasPaymentFile),
       ),
-    [activePlatforms, completedBatchGroups],
+    [activePlatforms, secondApprovedGroups],
   );
 
   const paidBatch = useMemo(
@@ -291,10 +302,10 @@ const TlpPaymentsDashboard = () => {
       softwareGroups.filter(
         (g) =>
           activePlatforms.includes(g.software) &&
-          completedBatchGroups.has(g.software) &&
+          secondApprovedGroups.has(g.software) &&
           (g.balancingSheetTotal > 0 || g.hasPaymentFile),
       ),
-    [activePlatforms, completedBatchGroups],
+    [activePlatforms, secondApprovedGroups],
   );
 
   const outstandingHolding = activeHoldingTransfers;
@@ -610,10 +621,24 @@ const TlpPaymentsDashboard = () => {
                                 Outstanding
                               </span>
                             )}
-                            <Button type="button" onClick={() => markBatchGroupDone(g.software)} className="min-w-32">
-                              <Check />
-                              Mark as Done
-                            </Button>
+                            {firstApprovedGroups.has(g.software) ? (
+                              <Button
+                                type="button"
+                                onClick={() => markSecondApproved(g.software)}
+                                className="min-w-36 border border-status-warning/20 bg-status-warning-surface text-status-warning-foreground hover:bg-status-warning/20"
+                              >
+                                Second Approve
+                              </Button>
+                            ) : (
+                              <Button
+                                type="button"
+                                onClick={() => markFirstApproved(g.software)}
+                                className="min-w-36"
+                              >
+                                <Check />
+                                Mark as Paid
+                              </Button>
+                            )}
                           </div>
                         );
                       })}
@@ -738,35 +763,62 @@ const TlpPaymentsDashboard = () => {
               </p>
 
               <div className="border-t border-border pt-6">
-                <div className="mb-4 grid grid-cols-[minmax(180px,1.2fr)_minmax(180px,1fr)_minmax(180px,1fr)_minmax(180px,1fr)] gap-4 px-4 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                <div className="mb-4 grid grid-cols-[minmax(180px,1.2fr)_minmax(180px,1fr)_minmax(180px,1fr)_minmax(180px,1fr)_160px] gap-4 px-4 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
                   <span>Software</span>
                   <span>Balancing Sheet Total</span>
                   <span>Payment File Total</span>
                   <span>Result</span>
+                  <span>Approval</span>
                 </div>
 
                 <div className="divide-y divide-border border-y border-border bg-panel">
                   {selectedGroups.map((group) => {
                     const difference = group.paymentFileTotal - group.balancingSheetTotal;
                     const matches = difference === 0;
+                    const isSecond = secondApprovedGroups.has(group.software);
+                    const isFirst = firstApprovedGroups.has(group.software);
 
                     return (
                       <div
                         key={group.software}
-                        className="grid gap-3 px-4 py-4 lg:grid-cols-[minmax(180px,1.2fr)_minmax(180px,1fr)_minmax(180px,1fr)_minmax(180px,1fr)] lg:items-center"
+                        className={`grid gap-3 px-4 py-4 lg:grid-cols-[minmax(180px,1.2fr)_minmax(180px,1fr)_minmax(180px,1fr)_minmax(180px,1fr)_160px] lg:items-center ${isSecond ? "text-muted-foreground" : ""}`}
                       >
-                        <span className="font-semibold text-foreground">{group.software}</span>
-                        <span className="text-sm text-foreground">
+                        <span className={`font-semibold ${isSecond ? "text-muted-foreground" : "text-foreground"}`}>{group.software}</span>
+                        <span className={`text-sm ${isSecond ? "text-muted-foreground" : "text-foreground"}`}>
                           <span className="mr-2 text-muted-foreground">Balancing Sheet:</span>
                           <span className="tabular-nums">{formatCurrency(group.balancingSheetTotal)}</span>
                         </span>
-                        <span className="text-sm text-foreground">
+                        <span className={`text-sm ${isSecond ? "text-muted-foreground" : "text-foreground"}`}>
                           <span className="mr-2 text-muted-foreground">Payment File:</span>
                           <span className="tabular-nums">{formatCurrency(group.paymentFileTotal)}</span>
                         </span>
-                        <span className={`text-sm font-semibold ${matches ? "text-status-success" : "text-status-danger"}`}>
+                        <span className={`text-sm font-semibold ${isSecond ? "text-muted-foreground" : matches ? "text-status-success" : "text-status-danger"}`}>
                           {matches ? `✅ Match` : `❌ Difference: ${formatCurrency(difference)}`}
                         </span>
+                        <div>
+                          {isSecond ? (
+                            <span className="inline-flex items-center rounded-full border border-status-success/20 bg-status-success-surface px-3 py-1 text-xs font-semibold text-status-success-foreground">
+                              ✅ Approved
+                            </span>
+                          ) : isFirst ? (
+                            <Button
+                              type="button"
+                              onClick={() => markSecondApproved(group.software)}
+                              className="min-w-36 border border-status-warning/20 bg-status-warning-surface text-status-warning-foreground hover:bg-status-warning/20"
+                            >
+                              Second Approve
+                            </Button>
+                          ) : (
+                            <Button
+                              type="button"
+                              onClick={() => markFirstApproved(group.software)}
+                              className="min-w-36"
+                            >
+                              <Check />
+                              Mark as Paid
+                            </Button>
+                          )}
+                        </div>
                       </div>
                     );
                   })}
