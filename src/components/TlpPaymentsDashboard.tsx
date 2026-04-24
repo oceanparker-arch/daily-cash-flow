@@ -177,7 +177,8 @@ const TlpPaymentsDashboard = () => {
   const activePlatforms = selectedPlatforms.length === 0 ? allPlatforms : selectedPlatforms;
   const [completedHoldingTransfers, setCompletedHoldingTransfers] = useState<Set<string>>(new Set());
   const [completedThirdPartyAgents, setCompletedThirdPartyAgents] = useState<Set<string>>(new Set());
-  const [completedBatchGroups, setCompletedBatchGroups] = useState<Set<string>>(new Set());
+  const [firstApprovedGroups, setFirstApprovedGroups] = useState<Set<string>>(new Set());
+  const [secondApprovedGroups, setSecondApprovedGroups] = useState<Set<string>>(new Set());
   const [holdingCompletedOpen, setHoldingCompletedOpen] = useState(false);
   const [thirdPartyCompletedOpen, setThirdPartyCompletedOpen] = useState(false);
   const [cutoffDismissed, setCutoffDismissed] = useState(false);
