@@ -451,8 +451,8 @@ const TlpPaymentsDashboard = () => {
             </section>
 
             <TabsList className="h-auto w-full justify-start gap-2 rounded-lg border border-border bg-panel p-2">
-            <TabsTrigger value="issues" className="gap-2 rounded-md px-4 py-2">
-              <span>Issues</span>
+            <TabsTrigger value="run-status" className="gap-2 rounded-md px-4 py-2">
+              <span>Run Status</span>
               {hasIssues && (
                 <span className="inline-flex min-w-6 items-center justify-center rounded-full border border-status-danger/20 bg-status-danger-surface px-2 py-0.5 text-xs font-semibold text-status-danger-foreground">
                   {issueCounts.issues}
