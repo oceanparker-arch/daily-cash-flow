@@ -399,7 +399,16 @@ const TlpPaymentsDashboard = () => {
 
   return (
     <main className="min-h-screen bg-app">
-      <div className="mx-auto flex w-full max-w-[1680px] flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
+      <div className="fixed left-0 right-0 top-0 z-50 h-1 bg-border">
+        <div
+          className="h-full transition-all duration-500"
+          style={{
+            width: `${progressValue}%`,
+            backgroundColor: progressValue === 100 ? "var(--status-success)" : "var(--color-primary, #4472C4)",
+          }}
+        />
+      </div>
+      <div className="mx-auto flex w-full max-w-[1680px] flex-col gap-6 px-4 py-6 pt-1 sm:px-6 lg:px-8">
         <Tabs defaultValue="run-status" className="space-y-6 pb-4">
           <div className="sticky top-0 z-20 space-y-2 bg-app pb-2">
             <header className="rounded-lg border border-border bg-header text-header-foreground shadow-sm">
@@ -724,6 +733,10 @@ const TlpPaymentsDashboard = () => {
                 <SummaryMetric label="Manual Payments (£)" value={softwareSummary.cboManualPayments} />
               </div>
 
+              <p className="text-sm text-muted-foreground">
+                Showing {selectedGroups.length} of {softwareGroups.length} platforms
+              </p>
+
               <div className="border-t border-border pt-6">
                 <div className="mb-4 grid grid-cols-[minmax(180px,1.2fr)_minmax(180px,1fr)_minmax(180px,1fr)_minmax(180px,1fr)] gap-4 px-4 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
                   <span>Software</span>
@@ -780,9 +793,14 @@ const TlpPaymentsDashboard = () => {
               </div>
 
               <div className="space-y-3">
-                <div>
-                  <h3 className="text-base font-semibold text-foreground">Holding Account Transfers</h3>
-                  <p className="text-sm text-muted-foreground">Separate holding transfer agents for manual bank payment oversight.</p>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-base font-semibold text-foreground">Holding Account Transfers</h3>
+                    <p className="text-sm text-muted-foreground">Separate holding transfer agents for manual bank payment oversight.</p>
+                  </div>
+                  <p className="text-sm text-muted-foreground tabular-nums">
+                    {activeHoldingTransfers.length} remaining
+                  </p>
                 </div>
 
                 <div className="divide-y divide-border border-y border-border bg-panel">
@@ -854,9 +872,14 @@ const TlpPaymentsDashboard = () => {
               </div>
 
               <div className="space-y-3">
-                <div>
-                  <h3 className="text-base font-semibold text-foreground">Third Party Agents</h3>
-                  <p className="text-sm text-muted-foreground">Issue and warning rows are surfaced first for rapid review.</p>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-base font-semibold text-foreground">Third Party Agents</h3>
+                    <p className="text-sm text-muted-foreground">Issue and warning rows are surfaced first for rapid review.</p>
+                  </div>
+                  <p className="text-sm text-muted-foreground tabular-nums">
+                    {activeThirdPartyAgents.length} remaining
+                  </p>
                 </div>
 
                 <div className="overflow-x-auto rounded-lg border border-border">
