@@ -189,8 +189,16 @@ const TlpPaymentsDashboard = () => {
     new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit" }).format(new Date()),
   );
 
-  const markBatchGroupDone = (software: string) => {
-    setCompletedBatchGroups((prev) => {
+  const markFirstApproved = (software: string) => {
+    setFirstApprovedGroups((prev) => {
+      const next = new Set(prev);
+      next.add(software);
+      return next;
+    });
+  };
+
+  const markSecondApproved = (software: string) => {
+    setSecondApprovedGroups((prev) => {
       const next = new Set(prev);
       next.add(software);
       return next;
