@@ -220,27 +220,8 @@ const TlpPaymentsDashboard = () => {
     [sortedFlags],
   );
 
-  const overallStatus = useMemo(
-    () =>
-      sortedFlags.some((flag) => flag.severity === "danger")
-        ? {
-            tone: "danger" as const,
-            label: "Action Required",
-            summary: `${issueCounts.issues} issues found across ${issueCounts.agents} agents`,
-          }
-        : sortedFlags.length > 0
-          ? {
-              tone: "warning" as const,
-              label: "Attention Required",
-              summary: `${issueCounts.issues} issues found across ${issueCounts.agents} agents`,
-            }
-          : {
-              tone: "success" as const,
-              label: "All Clear",
-              summary: "All files present, all totals match, no reconciliation differences",
-            },
-    [issueCounts.agents, issueCounts.issues, sortedFlags],
-  );
+  // overallStatus is defined after totalOutstanding below.
+
 
   const selectedGroups = useMemo(() => {
     const filtered = softwareGroups.filter((group) => selectedPlatforms.includes(group.software));
@@ -320,16 +301,52 @@ const TlpPaymentsDashboard = () => {
   const outstandingThirdParty = activeThirdPartyAgents;
   const paidThirdParty = completedThirdPartyAgentList;
 
-  const isPastCutoff = useMemo(() => {
+  const checkCutoff = () => {
     const now = new Date();
     return (
       now.getHours() > CUTOFF_HOUR ||
       (now.getHours() === CUTOFF_HOUR && now.getMinutes() >= CUTOFF_MINUTE)
     );
+  };
+
+  const [isPastCutoff, setIsPastCutoff] = useState(checkCutoff);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setIsPastCutoff(checkCutoff());
+    }, 60_000);
+    return () => clearInterval(interval);
   }, []);
 
   const totalOutstanding =
     outstandingBatch.length + outstandingHolding.length + outstandingThirdParty.length;
+
+  const overallStatus = useMemo(() => {
+    const hasDanger = sortedFlags.some((flag) => flag.severity === "danger");
+    const hasWarning = sortedFlags.length > 0;
+    const hasOutstanding = totalOutstanding > 0;
+
+    if (hasDanger) return {
+      tone: "danger" as const,
+      label: "Action Required",
+      summary: `${issueCounts.issues} issue${issueCounts.issues !== 1 ? "s" : ""} found across ${issueCounts.agents} agent${issueCounts.agents !== 1 ? "s" : ""} — ${totalOutstanding} payment${totalOutstanding !== 1 ? "s" : ""} outstanding`,
+    };
+    if (hasWarning) return {
+      tone: "warning" as const,
+      label: "Attention Required",
+      summary: `${issueCounts.issues} issue${issueCounts.issues !== 1 ? "s" : ""} to review — ${totalOutstanding} payment${totalOutstanding !== 1 ? "s" : ""} outstanding`,
+    };
+    if (hasOutstanding) return {
+      tone: "warning" as const,
+      label: "Payments In Progress",
+      summary: `No issues — ${totalOutstanding} payment${totalOutstanding !== 1 ? "s" : ""} still outstanding`,
+    };
+    return {
+      tone: "success" as const,
+      label: "All Clear",
+      summary: "All payments complete, no issues outstanding",
+    };
+  }, [sortedFlags, issueCounts, totalOutstanding]);
 
   const showCutoffAlert = isPastCutoff && totalOutstanding > 0 && !cutoffDismissed;
 
