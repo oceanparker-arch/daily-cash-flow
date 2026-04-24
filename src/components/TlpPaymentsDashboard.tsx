@@ -190,8 +190,21 @@ const TlpPaymentsDashboard = () => {
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>(allPlatforms);
   const [completedHoldingTransfers, setCompletedHoldingTransfers] = useState<Set<string>>(new Set());
   const [completedThirdPartyAgents, setCompletedThirdPartyAgents] = useState<Set<string>>(new Set());
+  const [completedBatchGroups, setCompletedBatchGroups] = useState<Set<string>>(new Set());
   const [holdingCompletedOpen, setHoldingCompletedOpen] = useState(false);
   const [thirdPartyCompletedOpen, setThirdPartyCompletedOpen] = useState(false);
+  const [cutoffDismissed, setCutoffDismissed] = useState(false);
+  const [batchOverviewOpen, setBatchOverviewOpen] = useState(false);
+  const [holdingOverviewOpen, setHoldingOverviewOpen] = useState(false);
+  const [thirdPartyOverviewOpen, setThirdPartyOverviewOpen] = useState(false);
+
+  const markBatchGroupDone = (software: string) => {
+    setCompletedBatchGroups((prev) => new Set([...prev, software]));
+  };
+
+  const handleRefresh = () => {
+    setCutoffDismissed(false);
+  };
 
   const sortedFlags = useMemo(
     () =>
