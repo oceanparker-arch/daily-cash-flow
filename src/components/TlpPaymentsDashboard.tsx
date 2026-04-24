@@ -763,35 +763,62 @@ const TlpPaymentsDashboard = () => {
               </p>
 
               <div className="border-t border-border pt-6">
-                <div className="mb-4 grid grid-cols-[minmax(180px,1.2fr)_minmax(180px,1fr)_minmax(180px,1fr)_minmax(180px,1fr)] gap-4 px-4 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                <div className="mb-4 grid grid-cols-[minmax(180px,1.2fr)_minmax(180px,1fr)_minmax(180px,1fr)_minmax(180px,1fr)_160px] gap-4 px-4 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
                   <span>Software</span>
                   <span>Balancing Sheet Total</span>
                   <span>Payment File Total</span>
                   <span>Result</span>
+                  <span>Approval</span>
                 </div>
 
                 <div className="divide-y divide-border border-y border-border bg-panel">
                   {selectedGroups.map((group) => {
                     const difference = group.paymentFileTotal - group.balancingSheetTotal;
                     const matches = difference === 0;
+                    const isSecond = secondApprovedGroups.has(group.software);
+                    const isFirst = firstApprovedGroups.has(group.software);
 
                     return (
                       <div
                         key={group.software}
-                        className="grid gap-3 px-4 py-4 lg:grid-cols-[minmax(180px,1.2fr)_minmax(180px,1fr)_minmax(180px,1fr)_minmax(180px,1fr)] lg:items-center"
+                        className={`grid gap-3 px-4 py-4 lg:grid-cols-[minmax(180px,1.2fr)_minmax(180px,1fr)_minmax(180px,1fr)_minmax(180px,1fr)_160px] lg:items-center ${isSecond ? "text-muted-foreground" : ""}`}
                       >
-                        <span className="font-semibold text-foreground">{group.software}</span>
-                        <span className="text-sm text-foreground">
+                        <span className={`font-semibold ${isSecond ? "text-muted-foreground" : "text-foreground"}`}>{group.software}</span>
+                        <span className={`text-sm ${isSecond ? "text-muted-foreground" : "text-foreground"}`}>
                           <span className="mr-2 text-muted-foreground">Balancing Sheet:</span>
                           <span className="tabular-nums">{formatCurrency(group.balancingSheetTotal)}</span>
                         </span>
-                        <span className="text-sm text-foreground">
+                        <span className={`text-sm ${isSecond ? "text-muted-foreground" : "text-foreground"}`}>
                           <span className="mr-2 text-muted-foreground">Payment File:</span>
                           <span className="tabular-nums">{formatCurrency(group.paymentFileTotal)}</span>
                         </span>
-                        <span className={`text-sm font-semibold ${matches ? "text-status-success" : "text-status-danger"}`}>
+                        <span className={`text-sm font-semibold ${isSecond ? "text-muted-foreground" : matches ? "text-status-success" : "text-status-danger"}`}>
                           {matches ? `✅ Match` : `❌ Difference: ${formatCurrency(difference)}`}
                         </span>
+                        <div>
+                          {isSecond ? (
+                            <span className="inline-flex items-center rounded-full border border-status-success/20 bg-status-success-surface px-3 py-1 text-xs font-semibold text-status-success-foreground">
+                              ✅ Approved
+                            </span>
+                          ) : isFirst ? (
+                            <Button
+                              type="button"
+                              onClick={() => markSecondApproved(group.software)}
+                              className="min-w-36 border border-status-warning/20 bg-status-warning-surface text-status-warning-foreground hover:bg-status-warning/20"
+                            >
+                              Second Approve
+                            </Button>
+                          ) : (
+                            <Button
+                              type="button"
+                              onClick={() => markFirstApproved(group.software)}
+                              className="min-w-36"
+                            >
+                              <Check />
+                              Mark as Paid
+                            </Button>
+                          )}
+                        </div>
                       </div>
                     );
                   })}
