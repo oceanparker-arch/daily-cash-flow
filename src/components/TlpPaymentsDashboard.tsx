@@ -142,11 +142,6 @@ const todayLabel = new Intl.DateTimeFormat("en-GB", {
   year: "numeric",
 }).format(new Date());
 
-const lastRefreshLabel = new Intl.DateTimeFormat("en-GB", {
-  hour: "2-digit",
-  minute: "2-digit",
-}).format(new Date());
-
 const sortedAgents = [...thirdPartyAgents].sort(
   (a, b) => statusOrder[a.status] - statusOrder[b.status] || a.agent.localeCompare(b.agent),
 );
