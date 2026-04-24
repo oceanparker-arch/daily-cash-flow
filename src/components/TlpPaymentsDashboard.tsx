@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Check, ChevronDown, RefreshCw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -37,15 +37,6 @@ type ThirdPartyAgent = {
 };
 
 type SoftwareGroup = {
-  software: string;
-  balancingSheetTotal: number;
-  paymentFileTotal: number;
-  cboTotal: number;
-  cboManualPayments: number;
-  hasPaymentFile: boolean;
-};
-
-type BatchGroup = {
   software: string;
   balancingSheetTotal: number;
   paymentFileTotal: number;
