@@ -42,6 +42,16 @@ type SoftwareGroup = {
   paymentFileTotal: number;
   cboTotal: number;
   cboManualPayments: number;
+  hasPaymentFile: boolean;
+};
+
+type BatchGroup = {
+  software: string;
+  balancingSheetTotal: number;
+  paymentFileTotal: number;
+  cboTotal: number;
+  cboManualPayments: number;
+  hasPaymentFile: boolean;
 };
 
 type HoldingTransferAgent = {
