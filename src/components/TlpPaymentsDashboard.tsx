@@ -3,8 +3,12 @@ import { Check, ChevronDown, RefreshCw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Toggle } from "@/components/ui/toggle";
+
+const CUTOFF_HOUR = 16;
+const CUTOFF_MINUTE = 30;
 
 type IssueSeverity = "danger" | "warning";
 type IssueType =
@@ -38,6 +42,16 @@ type SoftwareGroup = {
   paymentFileTotal: number;
   cboTotal: number;
   cboManualPayments: number;
+  hasPaymentFile: boolean;
+};
+
+type BatchGroup = {
+  software: string;
+  balancingSheetTotal: number;
+  paymentFileTotal: number;
+  cboTotal: number;
+  cboManualPayments: number;
+  hasPaymentFile: boolean;
 };
 
 type HoldingTransferAgent = {
@@ -91,15 +105,15 @@ const thirdPartyAgents: ThirdPartyAgent[] = [
 ];
 
 const softwareGroups: SoftwareGroup[] = [
-  { software: "10Ninety", balancingSheetTotal: 18240, paymentFileTotal: 18240, cboTotal: 17650, cboManualPayments: 590 },
-  { software: "Jupix", balancingSheetTotal: 21485, paymentFileTotal: 21485, cboTotal: 20735, cboManualPayments: 750 },
-  { software: "Alto", balancingSheetTotal: 19860, paymentFileTotal: 19610, cboTotal: 19010, cboManualPayments: 850 },
-  { software: "Street", balancingSheetTotal: 23620, paymentFileTotal: 23620, cboTotal: 22940, cboManualPayments: 680 },
-  { software: "Acquaint", balancingSheetTotal: 17275, paymentFileTotal: 17275, cboTotal: 16625, cboManualPayments: 650 },
-  { software: "Genie", balancingSheetTotal: 15430, paymentFileTotal: 15430, cboTotal: 14910, cboManualPayments: 520 },
-  { software: "Veco", balancingSheetTotal: 14380, paymentFileTotal: 14380, cboTotal: 13920, cboManualPayments: 460 },
-  { software: "SME", balancingSheetTotal: 16790, paymentFileTotal: 17040, cboTotal: 16140, cboManualPayments: 650 },
-  { software: "Reapit", balancingSheetTotal: 24810, paymentFileTotal: 24810, cboTotal: 23990, cboManualPayments: 820 },
+  { software: "10Ninety", balancingSheetTotal: 18240, paymentFileTotal: 18240, cboTotal: 17650, cboManualPayments: 590, hasPaymentFile: true },
+  { software: "Jupix", balancingSheetTotal: 21485, paymentFileTotal: 21485, cboTotal: 20735, cboManualPayments: 750, hasPaymentFile: true },
+  { software: "Alto", balancingSheetTotal: 19860, paymentFileTotal: 19610, cboTotal: 19010, cboManualPayments: 850, hasPaymentFile: true },
+  { software: "Street", balancingSheetTotal: 23620, paymentFileTotal: 23620, cboTotal: 22940, cboManualPayments: 680, hasPaymentFile: true },
+  { software: "Acquaint", balancingSheetTotal: 17275, paymentFileTotal: 0, cboTotal: 16625, cboManualPayments: 650, hasPaymentFile: false },
+  { software: "Genie", balancingSheetTotal: 15430, paymentFileTotal: 15430, cboTotal: 14910, cboManualPayments: 520, hasPaymentFile: true },
+  { software: "Veco", balancingSheetTotal: 14380, paymentFileTotal: 14380, cboTotal: 13920, cboManualPayments: 460, hasPaymentFile: true },
+  { software: "SME", balancingSheetTotal: 16790, paymentFileTotal: 17040, cboTotal: 16140, cboManualPayments: 650, hasPaymentFile: true },
+  { software: "Reapit", balancingSheetTotal: 0, paymentFileTotal: 0, cboTotal: 0, cboManualPayments: 0, hasPaymentFile: false },
 ];
 
 const holdingTransferAgents: HoldingTransferAgent[] = [
@@ -176,8 +190,21 @@ const TlpPaymentsDashboard = () => {
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>(allPlatforms);
   const [completedHoldingTransfers, setCompletedHoldingTransfers] = useState<Set<string>>(new Set());
   const [completedThirdPartyAgents, setCompletedThirdPartyAgents] = useState<Set<string>>(new Set());
+  const [completedBatchGroups, setCompletedBatchGroups] = useState<Set<string>>(new Set());
   const [holdingCompletedOpen, setHoldingCompletedOpen] = useState(false);
   const [thirdPartyCompletedOpen, setThirdPartyCompletedOpen] = useState(false);
+  const [cutoffDismissed, setCutoffDismissed] = useState(false);
+  const [batchOverviewOpen, setBatchOverviewOpen] = useState(false);
+  const [holdingOverviewOpen, setHoldingOverviewOpen] = useState(false);
+  const [thirdPartyOverviewOpen, setThirdPartyOverviewOpen] = useState(false);
+
+  const markBatchGroupDone = (software: string) => {
+    setCompletedBatchGroups((prev) => new Set([...prev, software]));
+  };
+
+  const handleRefresh = () => {
+    setCutoffDismissed(false);
+  };
 
   const sortedFlags = useMemo(
     () =>
@@ -270,6 +297,58 @@ const TlpPaymentsDashboard = () => {
     [completedThirdPartyAgents, selectedPlatforms],
   );
 
+  const outstandingBatch = useMemo(
+    () =>
+      softwareGroups.filter(
+        (g) =>
+          selectedPlatforms.includes(g.software) &&
+          !completedBatchGroups.has(g.software) &&
+          (g.balancingSheetTotal > 0 || g.hasPaymentFile),
+      ),
+    [selectedPlatforms, completedBatchGroups],
+  );
+
+  const paidBatch = useMemo(
+    () =>
+      softwareGroups.filter(
+        (g) =>
+          selectedPlatforms.includes(g.software) &&
+          completedBatchGroups.has(g.software) &&
+          (g.balancingSheetTotal > 0 || g.hasPaymentFile),
+      ),
+    [selectedPlatforms, completedBatchGroups],
+  );
+
+  const outstandingHolding = activeHoldingTransfers;
+  const paidHolding = completedHoldingTransferList;
+  const outstandingThirdParty = activeThirdPartyAgents;
+  const paidThirdParty = completedThirdPartyAgentList;
+
+  const isPastCutoff = useMemo(() => {
+    const now = new Date();
+    return (
+      now.getHours() > CUTOFF_HOUR ||
+      (now.getHours() === CUTOFF_HOUR && now.getMinutes() >= CUTOFF_MINUTE)
+    );
+  }, []);
+
+  const totalOutstanding =
+    outstandingBatch.length + outstandingHolding.length + outstandingThirdParty.length;
+
+  const showCutoffAlert = isPastCutoff && totalOutstanding > 0 && !cutoffDismissed;
+
+  const totalItems =
+    outstandingBatch.length +
+    paidBatch.length +
+    outstandingHolding.length +
+    paidHolding.length +
+    outstandingThirdParty.length +
+    paidThirdParty.length;
+
+  const completedItems = paidBatch.length + paidHolding.length + paidThirdParty.length;
+  const progressValue = totalItems > 0 ? (completedItems / totalItems) * 100 : 0;
+
+
   const togglePlatform = (platform: string) => {
     setSelectedPlatforms((current) => {
       if (current.includes(platform)) {
@@ -300,7 +379,7 @@ const TlpPaymentsDashboard = () => {
   return (
     <main className="min-h-screen bg-app">
       <div className="mx-auto flex w-full max-w-[1680px] flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
-        <Tabs defaultValue="issues" className="space-y-6 pb-4">
+        <Tabs defaultValue="run-status" className="space-y-6 pb-4">
           <div className="sticky top-0 z-20 space-y-4 bg-app pb-2">
             <header className="rounded-lg border border-border bg-header text-header-foreground shadow-sm">
               <div className="flex flex-col gap-4 px-5 py-4 lg:flex-row lg:items-center lg:justify-between lg:px-6">
@@ -312,7 +391,7 @@ const TlpPaymentsDashboard = () => {
                   </div>
                 </div>
 
-                <Button variant="toolbar" className="min-w-32 bg-panel text-foreground hover:-translate-y-0.5">
+                <Button variant="toolbar" onClick={handleRefresh} className="min-w-32 bg-panel text-foreground hover:-translate-y-0.5">
                   <RefreshCw className="motion-safe:group-hover:animate-spin-slow" />
                   Refresh
                 </Button>
@@ -372,8 +451,8 @@ const TlpPaymentsDashboard = () => {
             </section>
 
             <TabsList className="h-auto w-full justify-start gap-2 rounded-lg border border-border bg-panel p-2">
-            <TabsTrigger value="issues" className="gap-2 rounded-md px-4 py-2">
-              <span>Issues</span>
+            <TabsTrigger value="run-status" className="gap-2 rounded-md px-4 py-2">
+              <span>Run Status</span>
               {hasIssues && (
                 <span className="inline-flex min-w-6 items-center justify-center rounded-full border border-status-danger/20 bg-status-danger-surface px-2 py-0.5 text-xs font-semibold text-status-danger-foreground">
                   {issueCounts.issues}
@@ -389,7 +468,7 @@ const TlpPaymentsDashboard = () => {
             </TabsList>
           </div>
 
-          <TabsContent value="issues" className="mt-0">
+          <TabsContent value="run-status" className="mt-0">
             <section aria-labelledby="issues-heading" className="space-y-4">
               <div className="space-y-1">
                 <h2 id="issues-heading" className="text-xl font-semibold text-foreground">
@@ -429,6 +508,158 @@ const TlpPaymentsDashboard = () => {
                   No issues currently require attention.
                 </div>
               )}
+
+              <div className="space-y-4 border-t border-border pt-6">
+                <div className="space-y-1">
+                  <h2 className="text-xl font-semibold text-foreground">Payment Run Overview</h2>
+                  <p className="text-sm text-muted-foreground">
+                    All agents with a balance or payment file today, grouped by category.
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-sm text-muted-foreground">
+                    <span>Run progress</span>
+                    <span className="tabular-nums">
+                      {completedItems} / {totalItems} complete
+                    </span>
+                  </div>
+                  <Progress value={progressValue} />
+                </div>
+
+                {/* Batch Payments group */}
+                <Collapsible open={batchOverviewOpen} onOpenChange={setBatchOverviewOpen} className="rounded-lg border border-border bg-panel">
+                  <CollapsibleTrigger className="flex w-full items-center justify-between gap-4 px-4 py-3 text-left">
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm font-semibold text-foreground">
+                        Batch Payments —{" "}
+                        <span className="text-status-success">{paidBatch.length} paid</span>,{" "}
+                        <span className={outstandingBatch.length > 0 ? "text-status-danger" : "text-status-success"}>
+                          {outstandingBatch.length} outstanding
+                        </span>
+                      </span>
+                    </div>
+                    <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${batchOverviewOpen ? "rotate-180" : ""}`} />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="border-t border-border">
+                    <div className="divide-y divide-border">
+                      {outstandingBatch.map((g) => {
+                        const noBalancing = g.hasPaymentFile && g.balancingSheetTotal === 0;
+                        return (
+                          <div key={g.software} className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-4 px-4 py-3">
+                            <span className="font-semibold text-foreground">{g.software}</span>
+                            <span className="tabular-nums text-sm text-foreground">{formatCurrency(g.balancingSheetTotal)}</span>
+                            {noBalancing ? (
+                              <span className="inline-flex items-center rounded-full border border-status-warning/20 bg-status-warning-surface px-3 py-1 text-xs font-semibold text-status-warning-foreground">
+                                No Balancing Sheet
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center rounded-full border border-status-danger/20 bg-status-danger-surface px-3 py-1 text-xs font-semibold text-status-danger-foreground">
+                                Outstanding
+                              </span>
+                            )}
+                            <Button type="button" onClick={() => markBatchGroupDone(g.software)} className="min-w-32">
+                              <Check />
+                              Mark as Done
+                            </Button>
+                          </div>
+                        );
+                      })}
+                      {paidBatch.map((g) => (
+                        <div key={g.software} className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-4 px-4 py-3 text-muted-foreground">
+                          <span className="font-semibold">{g.software}</span>
+                          <span className="tabular-nums text-sm">{formatCurrency(g.balancingSheetTotal)}</span>
+                          <span className="inline-flex items-center rounded-full border border-status-success/20 bg-status-success-surface px-3 py-1 text-xs font-semibold text-status-success-foreground">
+                            ✅ Paid
+                          </span>
+                          <span />
+                        </div>
+                      ))}
+                      {outstandingBatch.length === 0 && paidBatch.length === 0 && (
+                        <div className="px-4 py-4 text-sm text-muted-foreground">No batch payment groups in scope.</div>
+                      )}
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+
+                {/* Holding group */}
+                <Collapsible open={holdingOverviewOpen} onOpenChange={setHoldingOverviewOpen} className="rounded-lg border border-border bg-panel">
+                  <CollapsibleTrigger className="flex w-full items-center justify-between gap-4 px-4 py-3 text-left">
+                    <span className="text-sm font-semibold text-foreground">
+                      Holding Account Transfers —{" "}
+                      <span className="text-status-success">{paidHolding.length} paid</span>,{" "}
+                      <span className={outstandingHolding.length > 0 ? "text-status-danger" : "text-status-success"}>
+                        {outstandingHolding.length} outstanding
+                      </span>
+                    </span>
+                    <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${holdingOverviewOpen ? "rotate-180" : ""}`} />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="border-t border-border">
+                    <div className="divide-y divide-border">
+                      {outstandingHolding.map((agent) => (
+                        <div key={agent.agent} className="grid grid-cols-[1fr_auto_auto] items-center gap-4 px-4 py-3">
+                          <span className="font-semibold text-foreground">{agent.agent}</span>
+                          <span className="tabular-nums text-sm text-foreground">{formatCurrency(agent.holdingTransfer)}</span>
+                          <span className="inline-flex items-center rounded-full border border-status-danger/20 bg-status-danger-surface px-3 py-1 text-xs font-semibold text-status-danger-foreground">
+                            Outstanding
+                          </span>
+                        </div>
+                      ))}
+                      {paidHolding.map((agent) => (
+                        <div key={agent.agent} className="grid grid-cols-[1fr_auto_auto] items-center gap-4 px-4 py-3 text-muted-foreground">
+                          <span className="font-semibold">{agent.agent}</span>
+                          <span className="tabular-nums text-sm">{formatCurrency(agent.holdingTransfer)}</span>
+                          <span className="inline-flex items-center rounded-full border border-status-success/20 bg-status-success-surface px-3 py-1 text-xs font-semibold text-status-success-foreground">
+                            ✅ Paid
+                          </span>
+                        </div>
+                      ))}
+                      {outstandingHolding.length === 0 && paidHolding.length === 0 && (
+                        <div className="px-4 py-4 text-sm text-muted-foreground">No holding account transfers in scope.</div>
+                      )}
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+
+                {/* Third Party group */}
+                <Collapsible open={thirdPartyOverviewOpen} onOpenChange={setThirdPartyOverviewOpen} className="rounded-lg border border-border bg-panel">
+                  <CollapsibleTrigger className="flex w-full items-center justify-between gap-4 px-4 py-3 text-left">
+                    <span className="text-sm font-semibold text-foreground">
+                      Third Party Agents —{" "}
+                      <span className="text-status-success">{paidThirdParty.length} paid</span>,{" "}
+                      <span className={outstandingThirdParty.length > 0 ? "text-status-danger" : "text-status-success"}>
+                        {outstandingThirdParty.length} outstanding
+                      </span>
+                    </span>
+                    <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${thirdPartyOverviewOpen ? "rotate-180" : ""}`} />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="border-t border-border">
+                    <div className="divide-y divide-border">
+                      {outstandingThirdParty.map((agent) => (
+                        <div key={agent.agent} className="grid grid-cols-[1fr_auto_auto] items-center gap-4 px-4 py-3">
+                          <span className="font-semibold text-foreground">{agent.agent}</span>
+                          <span className="tabular-nums text-sm text-foreground">{formatCurrency(agent.cboTotal)}</span>
+                          <span className="inline-flex items-center rounded-full border border-status-danger/20 bg-status-danger-surface px-3 py-1 text-xs font-semibold text-status-danger-foreground">
+                            Outstanding
+                          </span>
+                        </div>
+                      ))}
+                      {paidThirdParty.map((agent) => (
+                        <div key={agent.agent} className="grid grid-cols-[1fr_auto_auto] items-center gap-4 px-4 py-3 text-muted-foreground">
+                          <span className="font-semibold">{agent.agent}</span>
+                          <span className="tabular-nums text-sm">{formatCurrency(agent.cboTotal)}</span>
+                          <span className="inline-flex items-center rounded-full border border-status-success/20 bg-status-success-surface px-3 py-1 text-xs font-semibold text-status-success-foreground">
+                            ✅ Paid
+                          </span>
+                        </div>
+                      ))}
+                      {outstandingThirdParty.length === 0 && paidThirdParty.length === 0 && (
+                        <div className="px-4 py-4 text-sm text-muted-foreground">No third party agents in scope.</div>
+                      )}
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+              </div>
             </section>
           </TabsContent>
 
@@ -692,6 +923,53 @@ const TlpPaymentsDashboard = () => {
           </TabsContent>
         </Tabs>
       </div>
+
+      {showCutoffAlert && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="w-full max-w-lg rounded-lg border border-border bg-panel p-6 shadow-xl">
+            <h2 className="text-lg font-bold text-status-danger">
+              ⚠️ Outstanding Payments Past {String(CUTOFF_HOUR).padStart(2, "0")}:{String(CUTOFF_MINUTE).padStart(2, "0")}
+            </h2>
+            <div className="mt-4 space-y-4">
+              {outstandingBatch.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground">Batch</h3>
+                  <ul className="mt-1 space-y-1 text-sm text-muted-foreground">
+                    {outstandingBatch.map((g) => (
+                      <li key={g.software}>{g.software}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {outstandingHolding.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground">Holding Account Transfers</h3>
+                  <ul className="mt-1 space-y-1 text-sm text-muted-foreground">
+                    {outstandingHolding.map((agent) => (
+                      <li key={agent.agent}>{agent.agent}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {outstandingThirdParty.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground">Third Party Agents</h3>
+                  <ul className="mt-1 space-y-1 text-sm text-muted-foreground">
+                    {outstandingThirdParty.map((agent) => (
+                      <li key={agent.agent}>{agent.agent}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+            <div className="mt-6 flex justify-end">
+              <Button type="button" onClick={() => setCutoffDismissed(true)}>
+                Dismiss
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 };
