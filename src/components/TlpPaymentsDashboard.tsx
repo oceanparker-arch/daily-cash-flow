@@ -371,14 +371,22 @@ const TlpPaymentsDashboard = () => {
 
   const selectAllPlatforms = () => setSelectedPlatforms(allPlatforms);
 
-  const clearPlatforms = () => setSelectedPlatforms(allPlatforms);
+  const clearPlatforms = () => setSelectedPlatforms([allPlatforms[0]]);
 
   const markHoldingTransferDone = (agentName: string) => {
-    setCompletedHoldingTransfers((prev) => new Set([...prev, agentName]));
+    setCompletedHoldingTransfers((prev) => {
+      const next = new Set(prev);
+      next.add(agentName);
+      return next;
+    });
   };
 
   const markThirdPartyAgentDone = (agentName: string) => {
-    setCompletedThirdPartyAgents((current) => new Set(current).add(agentName));
+    setCompletedThirdPartyAgents((prev) => {
+      const next = new Set(prev);
+      next.add(agentName);
+      return next;
+    });
   };
 
   return (
