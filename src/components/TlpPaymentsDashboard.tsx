@@ -105,15 +105,15 @@ const thirdPartyAgents: ThirdPartyAgent[] = [
 ];
 
 const softwareGroups: SoftwareGroup[] = [
-  { software: "10Ninety", balancingSheetTotal: 18240, paymentFileTotal: 18240, cboTotal: 17650, cboManualPayments: 590 },
-  { software: "Jupix", balancingSheetTotal: 21485, paymentFileTotal: 21485, cboTotal: 20735, cboManualPayments: 750 },
-  { software: "Alto", balancingSheetTotal: 19860, paymentFileTotal: 19610, cboTotal: 19010, cboManualPayments: 850 },
-  { software: "Street", balancingSheetTotal: 23620, paymentFileTotal: 23620, cboTotal: 22940, cboManualPayments: 680 },
-  { software: "Acquaint", balancingSheetTotal: 17275, paymentFileTotal: 17275, cboTotal: 16625, cboManualPayments: 650 },
-  { software: "Genie", balancingSheetTotal: 15430, paymentFileTotal: 15430, cboTotal: 14910, cboManualPayments: 520 },
-  { software: "Veco", balancingSheetTotal: 14380, paymentFileTotal: 14380, cboTotal: 13920, cboManualPayments: 460 },
-  { software: "SME", balancingSheetTotal: 16790, paymentFileTotal: 17040, cboTotal: 16140, cboManualPayments: 650 },
-  { software: "Reapit", balancingSheetTotal: 24810, paymentFileTotal: 24810, cboTotal: 23990, cboManualPayments: 820 },
+  { software: "10Ninety", balancingSheetTotal: 18240, paymentFileTotal: 18240, cboTotal: 17650, cboManualPayments: 590, hasPaymentFile: true },
+  { software: "Jupix", balancingSheetTotal: 21485, paymentFileTotal: 21485, cboTotal: 20735, cboManualPayments: 750, hasPaymentFile: true },
+  { software: "Alto", balancingSheetTotal: 19860, paymentFileTotal: 19610, cboTotal: 19010, cboManualPayments: 850, hasPaymentFile: true },
+  { software: "Street", balancingSheetTotal: 23620, paymentFileTotal: 23620, cboTotal: 22940, cboManualPayments: 680, hasPaymentFile: true },
+  { software: "Acquaint", balancingSheetTotal: 17275, paymentFileTotal: 0, cboTotal: 16625, cboManualPayments: 650, hasPaymentFile: false },
+  { software: "Genie", balancingSheetTotal: 15430, paymentFileTotal: 15430, cboTotal: 14910, cboManualPayments: 520, hasPaymentFile: true },
+  { software: "Veco", balancingSheetTotal: 14380, paymentFileTotal: 14380, cboTotal: 13920, cboManualPayments: 460, hasPaymentFile: true },
+  { software: "SME", balancingSheetTotal: 16790, paymentFileTotal: 17040, cboTotal: 16140, cboManualPayments: 650, hasPaymentFile: true },
+  { software: "Reapit", balancingSheetTotal: 0, paymentFileTotal: 0, cboTotal: 0, cboManualPayments: 0, hasPaymentFile: false },
 ];
 
 const holdingTransferAgents: HoldingTransferAgent[] = [
