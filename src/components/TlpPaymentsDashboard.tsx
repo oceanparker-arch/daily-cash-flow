@@ -206,9 +206,9 @@ const TlpPaymentsDashboard = () => {
   const sortedFlags = useMemo(
     () =>
       [...issueFlags]
-        .filter((flag) => selectedPlatforms.some((platform) => platform.toUpperCase() === flag.platform.toUpperCase()))
+        .filter((flag) => activePlatforms.some((platform) => platform.toUpperCase() === flag.platform.toUpperCase()))
         .sort((a, b) => severityOrder[a.severity] - severityOrder[b.severity] || a.agent.localeCompare(b.agent)),
-    [selectedPlatforms],
+    [activePlatforms],
   );
 
   const hasIssues = sortedFlags.length > 0;
@@ -225,7 +225,7 @@ const TlpPaymentsDashboard = () => {
 
 
   const selectedGroups = useMemo(() => {
-    const filtered = softwareGroups.filter((group) => selectedPlatforms.includes(group.software));
+    const filtered = softwareGroups.filter((group) => activePlatforms.includes(group.software));
 
     return [...filtered].sort((a, b) => {
       const aMismatch = a.balancingSheetTotal !== a.paymentFileTotal ? 0 : 1;
@@ -233,7 +233,7 @@ const TlpPaymentsDashboard = () => {
 
       return aMismatch - bMismatch || a.software.localeCompare(b.software);
     });
-  }, [selectedPlatforms]);
+  }, [activePlatforms]);
 
   const softwareSummary = selectedGroups.reduce(
     (totals, group) => ({
@@ -246,55 +246,55 @@ const TlpPaymentsDashboard = () => {
   const activeHoldingTransfers = useMemo(
     () =>
       holdingTransferAgents.filter(
-        (agent) => !completedHoldingTransfers.has(agent.agent) && selectedPlatforms.includes(agent.platform),
+        (agent) => !completedHoldingTransfers.has(agent.agent) && activePlatforms.includes(agent.platform),
       ),
-    [completedHoldingTransfers, selectedPlatforms],
+    [completedHoldingTransfers, activePlatforms],
   );
 
   const completedHoldingTransferList = useMemo(
     () =>
       holdingTransferAgents.filter(
-        (agent) => completedHoldingTransfers.has(agent.agent) && selectedPlatforms.includes(agent.platform),
+        (agent) => completedHoldingTransfers.has(agent.agent) && activePlatforms.includes(agent.platform),
       ),
-    [completedHoldingTransfers, selectedPlatforms],
+    [completedHoldingTransfers, activePlatforms],
   );
 
   const activeThirdPartyAgents = useMemo(
     () =>
       sortedAgents.filter(
-        (agent) => !completedThirdPartyAgents.has(agent.agent) && selectedPlatforms.includes(agent.platform),
+        (agent) => !completedThirdPartyAgents.has(agent.agent) && activePlatforms.includes(agent.platform),
       ),
-    [completedThirdPartyAgents, selectedPlatforms],
+    [completedThirdPartyAgents, activePlatforms],
   );
 
   const completedThirdPartyAgentList = useMemo(
     () =>
       sortedAgents.filter(
-        (agent) => completedThirdPartyAgents.has(agent.agent) && selectedPlatforms.includes(agent.platform),
+        (agent) => completedThirdPartyAgents.has(agent.agent) && activePlatforms.includes(agent.platform),
       ),
-    [completedThirdPartyAgents, selectedPlatforms],
+    [completedThirdPartyAgents, activePlatforms],
   );
 
   const outstandingBatch = useMemo(
     () =>
       softwareGroups.filter(
         (g) =>
-          selectedPlatforms.includes(g.software) &&
+          activePlatforms.includes(g.software) &&
           !completedBatchGroups.has(g.software) &&
           (g.balancingSheetTotal > 0 || g.hasPaymentFile),
       ),
-    [selectedPlatforms, completedBatchGroups],
+    [activePlatforms, completedBatchGroups],
   );
 
   const paidBatch = useMemo(
     () =>
       softwareGroups.filter(
         (g) =>
-          selectedPlatforms.includes(g.software) &&
+          activePlatforms.includes(g.software) &&
           completedBatchGroups.has(g.software) &&
           (g.balancingSheetTotal > 0 || g.hasPaymentFile),
       ),
-    [selectedPlatforms, completedBatchGroups],
+    [activePlatforms, completedBatchGroups],
   );
 
   const outstandingHolding = activeHoldingTransfers;
